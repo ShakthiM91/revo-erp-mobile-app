@@ -85,16 +85,20 @@ async function loadBranding () {
     if (!data) return
     const settings = typeof data.settings === 'string' ? JSON.parse(data.settings || '{}') : (data.settings || {})
     appName.value = settings.app_name || data.name || 'Revo ERP'
-    const path = settings.logo_path
-    if (path) {
-      if (path.startsWith('http://') || path.startsWith('https://')) {
-        logoUrl.value = path
-      } else {
-        const base = (data.attachment_base_url || '').replace(/\/$/, '')
-        logoUrl.value = base ? `${base}/${path.replace(/^\//, '')}` : null
-      }
+    if (settings.logo_url) {
+      logoUrl.value = settings.logo_url
     } else {
-      logoUrl.value = null
+      const path = settings.logo_path
+      if (path) {
+        if (path.startsWith('http://') || path.startsWith('https://')) {
+          logoUrl.value = path
+        } else {
+          const base = (data.attachment_base_url || '').replace(/\/$/, '')
+          logoUrl.value = base ? `${base}/${path.replace(/^\//, '')}` : null
+        }
+      } else {
+        logoUrl.value = null
+      }
     }
   } catch (e) {
     appName.value = 'Revo ERP'
