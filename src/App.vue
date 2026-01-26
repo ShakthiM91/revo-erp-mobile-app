@@ -21,4 +21,15 @@ html, body, #app {
 :root {
   --ion-color-primary: #1989fa;
 }
+
+/* Center toast message text */
+ion-toast.toast-center::part(container) {
+  text-align: center;
+  justify-content: center;
+}
+ion-toast.toast-center::part(message) {
+  text-align: center;
+  display: block;
+  width: 100%;
+}
 </style>

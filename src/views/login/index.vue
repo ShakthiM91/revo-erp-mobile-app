@@ -6,7 +6,7 @@
           <div class="login-card">
             <div class="title-block">
               <h1 class="title">Revo ERP</h1>
-              <p class="subtitle">Tenant Admin</p>
+              <!-- <p class="subtitle">Tenant Admin</p>   -->
             </div>
 
             <ion-list lines="none" class="login-list">
@@ -37,7 +37,7 @@
             </div>
           </div>
 
-          <p class="tips">Tenant Admin: demo@demo.revo-erp.com / demo123</p>
+          <!-- <p class="tips">Tenant Admin: demo@demo.revo-erp.com / demo123</p> -->
         </form>
       </div>
     </ion-content>

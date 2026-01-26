@@ -1,7 +1,12 @@
 import { toastController, alertController } from '@ionic/vue'
 
 export async function showToast(message) {
-  const toast = await toastController.create({ message, duration: 2000 })
+  const toast = await toastController.create({
+    message,
+    duration: 2000,
+    position: 'top',
+    cssClass: 'toast-center'
+  })
   await toast.present()
 }
 

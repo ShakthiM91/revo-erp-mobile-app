@@ -1,5 +1,13 @@
 <template>
   <ion-page>
+    <ion-header>
+      <ion-toolbar>
+        <ion-title class="ion-text-center">
+          <img  :src="logoUrl" class="brand-logo" alt="" />
+          <span >{{ appName || 'Revo ERP' }}</span>
+        </ion-title>
+      </ion-toolbar>
+    </ion-header>
     <ion-content>
       <ion-refresher slot="fixed" @ionRefresh="onRefresh">
         <ion-refresher-content />
@@ -44,12 +52,18 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
-import { IonPage, IonContent, IonRefresher, IonRefresherContent, IonGrid, IonRow, IonCol, IonIcon } from '@ionic/vue'
+import { IonPage, IonHeader, IonToolbar, IonTitle, IonContent, IonRefresher, IonRefresherContent, IonGrid, IonRow, IonCol, IonIcon } from '@ionic/vue'
 import { peopleOutline, personOutline, cubeOutline, calendarOutline } from 'ionicons/icons'
 import { showToast } from '@/utils/ionicFeedback'
+import { useUserStore } from '@/store/user'
+import { getTenant } from '@/api/tenant'
 import { getMemberStatistics } from '@/api/member'
 import { getAssets } from '@/api/asset'
 import { getUpcomingEvents } from '@/api/schedule'
+
+const userStore = useUserStore()
+const appName = ref('')
+const logoUrl = ref(null)
 
 const statistics = ref({
   totalMembers: 0,
@@ -57,6 +71,36 @@ const statistics = ref({
   totalAssets: 0,
   upcomingEvents: 0
 })
+
+async function loadBranding () {
+  const tenantId = userStore.tenantId
+  if (!tenantId) {
+    appName.value = 'Revo ERP'
+    logoUrl.value = null
+    return
+  }
+  try {
+    const res = await getTenant(tenantId)
+    const data = res?.data
+    if (!data) return
+    const settings = typeof data.settings === 'string' ? JSON.parse(data.settings || '{}') : (data.settings || {})
+    appName.value = settings.app_name || data.name || 'Revo ERP'
+    const path = settings.logo_path
+    if (path) {
+      if (path.startsWith('http://') || path.startsWith('https://')) {
+        logoUrl.value = path
+      } else {
+        const base = (data.attachment_base_url || '').replace(/\/$/, '')
+        logoUrl.value = base ? `${base}/${path.replace(/^\//, '')}` : null
+      }
+    } else {
+      logoUrl.value = null
+    }
+  } catch (e) {
+    appName.value = 'Revo ERP'
+    logoUrl.value = null
+  }
+}
 
 const fetchStatistics = async () => {
   try {
@@ -71,12 +115,14 @@ const fetchStatistics = async () => {
     } catch {
       statistics.value.totalAssets = 0
     }
-    try {
-      const eventsRes = await getUpcomingEvents(20)
-      statistics.value.upcomingEvents = (eventsRes?.data || []).length
-    } catch {
-      statistics.value.upcomingEvents = 0
-    }
+    // TODO: Implement upcoming events
+    // try {
+    //   const eventsRes = await getUpcomingEvents(20)
+    //   statistics.value.upcomingEvents = (eventsRes?.data || []).length
+    // } catch {
+    //   statistics.value.upcomingEvents = 0
+    // }
+    statistics.value.upcomingEvents = 0
   } catch (e) {
     console.error('Dashboard fetch error:', e)
     showToast('Failed to load dashboard')
@@ -84,14 +130,23 @@ const fetchStatistics = async () => {
 }
 
 const onRefresh = async (ev) => {
-  await fetchStatistics()
+  await Promise.all([loadBranding(), fetchStatistics()])
   ev.target.complete()
 }
 
-onMounted(() => fetchStatistics())
+onMounted(() => {
+  loadBranding()
+  fetchStatistics()
+})
 </script>
 
 <style scoped>
+.brand-logo {
+  max-height: 28px;
+  width: auto;
+  vertical-align: middle;
+  object-fit: contain;
+}
 .dashboard {
   padding: 16px;
   min-height: 100%;

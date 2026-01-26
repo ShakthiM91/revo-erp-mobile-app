@@ -192,8 +192,11 @@ onMounted(async () => {
     const r = await getTenantDefaultCurrency()
     const c = r?.data?.data ?? r?.data
     if (c?.code) defaultCurrency.value = c
-  } catch (_) {}
+  } catch (e) {
+    showToast('Failed to load default currency', e?.message)
+  }
   await fetchSummary()
+  await load()
 })
 </script>
 

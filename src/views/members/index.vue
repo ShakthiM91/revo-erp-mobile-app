@@ -3,7 +3,7 @@
     <ion-header>
       <ion-toolbar>
         <ion-buttons slot="start">
-          <ion-back-button />
+          <ion-back-button default-href="/me" />
         </ion-buttons>
         <ion-title>Members</ion-title>
         <ion-buttons slot="end">
