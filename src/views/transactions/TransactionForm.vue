@@ -15,7 +15,7 @@
       <form @submit.prevent="submit">
         <ion-list lines="inset">
           <ion-item>
-            <ion-label position="stacked">Number</ion-label>
+            <ion-label position="stacked">Transaction Number</ion-label>
             <ion-input v-model="form.transaction_number" placeholder="Transaction number" />
           </ion-item>
           <ion-item button detail @click="showTypePicker = true">
@@ -27,12 +27,30 @@
             <ion-note slot="end">{{ accountText || 'Select' }}</ion-note>
           </ion-item>
           <ion-item v-if="form.type === 'transfer'" button detail @click="showAccountPicker = true">
-            <ion-label position="stacked">From</ion-label>
+            <ion-label position="stacked">From Account</ion-label>
             <ion-note slot="end">{{ accountText || 'Select' }}</ion-note>
           </ion-item>
+          <ion-item v-if="selectedAccount" class="balance-note">
+            <ion-note>
+              Balance: <strong :class="selectedAccount.current_balance >= 0 ? 'positive' : 'negative'">
+                {{ formatCurrency(selectedAccount.current_balance, selectedAccount.currency) }}
+              </strong>
+              <span v-if="selectedAccount.credit_limit"> · Limit: {{ formatCurrency(selectedAccount.credit_limit, selectedAccount.currency) }}</span>
+            </ion-note>
+          </ion-item>
           <ion-item v-if="form.type === 'transfer'" button detail @click="showToAccountPicker = true">
-            <ion-label position="stacked">To</ion-label>
+            <ion-label position="stacked">To Account</ion-label>
             <ion-note slot="end">{{ toAccountText || 'Select' }}</ion-note>
+          </ion-item>
+          <ion-item v-if="selectedToAccount && form.type === 'transfer'" class="balance-note">
+            <ion-note>
+              Balance: <strong :class="selectedToAccount.current_balance >= 0 ? 'positive' : 'negative'">
+                {{ formatCurrency(selectedToAccount.current_balance, selectedToAccount.currency) }}
+              </strong>
+            </ion-note>
+          </ion-item>
+          <ion-item v-if="creditWarning" class="credit-warning">
+            <ion-note color="warning">{{ creditWarning }}</ion-note>
           </ion-item>
           <ion-item v-if="form.type !== 'transfer'" button detail @click="showCategoryPicker = true">
             <ion-label position="stacked">Category</ion-label>
@@ -40,7 +58,14 @@
           </ion-item>
           <ion-item>
             <ion-label position="stacked">Amount</ion-label>
-            <ion-input v-model.number="form.amount" type="number" inputmode="decimal" placeholder="0.00" />
+            <ion-input
+              v-model.number="form.amount"
+              type="number"
+              inputmode="decimal"
+              min="0"
+              step="0.01"
+              placeholder="0.00"
+            />
           </ion-item>
           <ion-item button detail @click="showCurrencyPicker = true">
             <ion-label position="stacked">Currency</ion-label>
@@ -54,7 +79,7 @@
         <ion-item-divider />
         <ion-list lines="inset">
           <ion-item button detail @click="showDatePicker = true">
-            <ion-label position="stacked">Date</ion-label>
+            <ion-label position="stacked">Transaction Date & Time</ion-label>
             <ion-note slot="end">{{ dateText }}</ion-note>
           </ion-item>
           <ion-item button detail @click="showStatusPicker = true">
@@ -64,20 +89,19 @@
         </ion-list>
       </form>
 
-      <!-- Pickers as modals -->
       <ion-modal :is-open="showTypePicker" @didDismiss="showTypePicker = false">
         <ion-header><ion-toolbar><ion-title>Type</ion-title><ion-buttons slot="end"><ion-button @click="showTypePicker = false">Cancel</ion-button></ion-buttons></ion-toolbar></ion-header>
         <ion-content>
           <ion-list>
-            <ion-item v-for="c in typeCols" :key="c.value" button @click="form.type = c.value; showTypePicker = false"><ion-label>{{ c.text }}</ion-label></ion-item>
+            <ion-item v-for="c in typeCols" :key="c.value" button @click="selectType(c.value)"><ion-label>{{ c.text }}</ion-label></ion-item>
           </ion-list>
         </ion-content>
       </ion-modal>
       <ion-modal :is-open="showAccountPicker" @didDismiss="showAccountPicker = false">
-        <ion-header><ion-toolbar><ion-title>Account</ion-title><ion-buttons slot="end"><ion-button @click="showAccountPicker = false">Cancel</ion-button></ion-buttons></ion-toolbar></ion-header>
+        <ion-header><ion-toolbar><ion-title>{{ form.type === 'transfer' ? 'From Account' : 'Account' }}</ion-title><ion-buttons slot="end"><ion-button @click="showAccountPicker = false">Cancel</ion-button></ion-buttons></ion-toolbar></ion-header>
         <ion-content>
           <ion-list>
-            <ion-item v-for="a in accountCols" :key="a.value" button @click="form.account_id = a.value; showAccountPicker = false"><ion-label>{{ a.text }}</ion-label></ion-item>
+            <ion-item v-for="a in accountCols" :key="a.value" button @click="selectAccount(a.value)"><ion-label>{{ a.text }}</ion-label></ion-item>
           </ion-list>
         </ion-content>
       </ion-modal>
@@ -85,10 +109,11 @@
         <ion-header><ion-toolbar><ion-title>To Account</ion-title><ion-buttons slot="end"><ion-button @click="showToAccountPicker = false">Cancel</ion-button></ion-buttons></ion-toolbar></ion-header>
         <ion-content>
           <ion-list>
-            <ion-item v-for="a in toAccountCols" :key="a.value" button @click="form.to_account_id = a.value; showToAccountPicker = false"><ion-label>{{ a.text }}</ion-label></ion-item>
+            <ion-item v-for="a in toAccountCols" :key="a.value" button @click="selectToAccount(a.value)"><ion-label>{{ a.text }}</ion-label></ion-item>
           </ion-list>
         </ion-content>
       </ion-modal>
+      <!-- category picker -->
       <ion-modal :is-open="showCategoryPicker" @didDismiss="showCategoryPicker = false">
         <ion-header><ion-toolbar><ion-title>Category</ion-title><ion-buttons slot="end"><ion-button @click="showCategoryPicker = false">Cancel</ion-button></ion-buttons></ion-toolbar></ion-header>
         <ion-content>
@@ -106,12 +131,12 @@
         </ion-content>
       </ion-modal>
       <ion-modal :is-open="showDatePicker" @didDismiss="showDatePicker = false">
-        <ion-header><ion-toolbar><ion-title>Date</ion-title><ion-buttons slot="end"><ion-button @click="showDatePicker = false">OK</ion-button></ion-buttons></ion-toolbar></ion-header>
+        <ion-header><ion-toolbar><ion-title>Date & Time</ion-title><ion-buttons slot="end"><ion-button @click="showDatePicker = false">OK</ion-button></ion-buttons></ion-toolbar></ion-header>
         <ion-content>
           <ion-datetime
-            presentation="date"
-            :value="form.transaction_date"
-            @ionChange="(e) => { const v = e.detail.value; if (v) form.transaction_date = v.slice(0, 10) }"
+            presentation="date-time"
+            :value="dateTimeToIso(form.transaction_date)"
+            @ionChange="onDateChange"
           />
         </ion-content>
       </ion-modal>
@@ -150,7 +175,7 @@ import {
   IonDatetime
 } from '@ionic/vue'
 import { showToast } from '@/utils/ionicFeedback'
-import { createTransaction, updateTransaction, getTransactionById, getCategoryTree, getAccounts } from '@/api/accounting'
+import { createTransaction, updateTransaction, getTransactionById, getCategoryTree, getAccounts, getPrimaryAccount } from '@/api/accounting'
 import { getTenantCurrencies, getTenantDefaultCurrency } from '@/api/currency'
 
 const route = useRoute()
@@ -158,16 +183,40 @@ const router = useRouter()
 const id = route.params.id
 const isEdit = !!id
 
+// Same as tenant-admin: YYYY-MM-DD HH:mm:ss for API; ion-datetime uses ISO
+const getCurrentDateTimeString = () => {
+  const d = new Date()
+  const pad = (n) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`
+}
+
+const normalizeTransactionDateTime = (value) => {
+  if (!value) return getCurrentDateTimeString()
+  const s = String(value).trim()
+  if (s.length === 10 && s.match(/^\d{4}-\d{2}-\d{2}$/)) return `${s} 00:00:00`
+  const date = new Date(s)
+  if (Number.isNaN(date.getTime())) return getCurrentDateTimeString()
+  const pad = (n) => String(n).padStart(2, '0')
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`
+}
+
+// ion-datetime value: ISO string (YYYY-MM-DDTHH:mm:ss)
+const dateTimeToIso = (value) => {
+  if (!value) return new Date().toISOString().slice(0, 19)
+  const s = normalizeTransactionDateTime(value)
+  return s.replace(' ', 'T')
+}
+
 const form = reactive({
   transaction_number: '',
   type: 'income',
   account_id: null,
   to_account_id: null,
   category_id: null,
-  amount: '',
+  amount: 0,
   currency: 'USD',
   description: '',
-  transaction_date: new Date().toISOString().split('T')[0],
+  transaction_date: getCurrentDateTimeString(),
   status: 'completed'
 })
 
@@ -175,6 +224,7 @@ const accountOptions = ref([])
 const categoryOptions = ref([])
 const currencyOptions = ref([{ value: 'USD', text: 'USD' }])
 const saving = ref(false)
+const creditWarning = ref(null)
 
 const showTypePicker = ref(false)
 const showAccountPicker = ref(false)
@@ -189,16 +239,44 @@ const statusCols = [{ text: 'Completed', value: 'completed' }, { text: 'Pending'
 
 const typeText = computed(() => typeCols.find(c => c.value === form.type)?.text || form.type)
 const statusText = computed(() => statusCols.find(c => c.value === form.status)?.text || form.status)
-const accountText = computed(() => accountOptions.value.find(a => a.id === form.account_id)?.name || '')
-const toAccountText = computed(() => accountOptions.value.find(a => a.id === form.to_account_id)?.name || '')
+const selectedAccount = computed(() => form.account_id ? accountOptions.value.find(a => a.id === form.account_id) : null)
+const selectedToAccount = computed(() => form.to_account_id ? accountOptions.value.find(a => a.id === form.to_account_id) : null)
+const accountText = computed(() => selectedAccount.value ? `${selectedAccount.value.name} (${formatCurrency(selectedAccount.value.current_balance, selectedAccount.value.currency)})` : '')
+const toAccountText = computed(() => selectedToAccount.value ? `${selectedToAccount.value.name} (${formatCurrency(selectedToAccount.value.current_balance, selectedToAccount.value.currency)})` : '')
 const categoryText = computed(() => categoryOptions.value.find(c => c.value === form.category_id)?.text || '')
 const currencyText = computed(() => currencyOptions.value.find(c => c.value === form.currency)?.text || form.currency)
 const dateText = computed(() => form.transaction_date || '')
 
-const accountCols = computed(() => accountOptions.value.map(a => ({ text: a.name, value: a.id })))
-const toAccountCols = computed(() => accountOptions.value.filter(a => a.id !== form.account_id).map(a => ({ text: a.name, value: a.id })))
+function formatCurrency (amount, currency = 'USD') {
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: currency,
+    minimumFractionDigits: 2
+  }).format(amount ?? 0)
+}
+
+const accountCols = computed(() =>
+  accountOptions.value.map(a => ({
+    text: `${a.name} (${formatCurrency(a.current_balance, a.currency)})`,
+    value: a.id
+  }))
+)
+const toAccountCols = computed(() =>
+  accountOptions.value
+    .filter(a => a.id !== form.account_id)
+    .map(a => ({ text: `${a.name} (${formatCurrency(a.current_balance, a.currency)})`, value: a.id }))
+)
 const categoryCols = computed(() => categoryOptions.value.map(c => ({ text: c.text, value: c.value })))
 const currencyCols = computed(() => currencyOptions.value.map(c => ({ text: c.text, value: c.value })))
+
+function filterActiveCategories (categories) {
+  return (categories || [])
+    .filter(cat => cat.is_active !== false)
+    .map(cat => ({
+      ...cat,
+      children: cat.children?.length ? filterActiveCategories(cat.children) : []
+    }))
+}
 
 function flatten (arr, pre = '') {
   const out = []
@@ -218,23 +296,112 @@ async function loadOptions () {
     ])
     if (accRes?.data) accountOptions.value = accRes.data
     const cur = curRes?.data?.data ?? curRes?.data
-    if (Array.isArray(cur) && cur.length) currencyOptions.value = cur.map(c => ({ value: c.code, text: `${c.code} - ${c.name || c.code}` }))
+    if (Array.isArray(cur) && cur.length) {
+      currencyOptions.value = cur.map(c => ({ value: c.code, text: `${c.code} - ${c.name || c.code}` }))
+    }
     const def = await getTenantDefaultCurrency().catch(() => null)
     const dc = def?.data?.data ?? def?.data
-    if (dc?.code && !form.currency) form.currency = dc.code
-  } catch (_) {}
+    if (dc?.code) form.currency = dc.code
+    else if (currencyOptions.value.length && !form.currency) form.currency = currencyOptions.value[0].value
+  } catch (_) {
+    if (!form.currency) form.currency = 'USD'
+  }
 }
 
 async function loadCategories () {
-  if (form.type === 'transfer') { categoryOptions.value = []; return }
+  if (form.type === 'transfer') {
+    categoryOptions.value = []
+    return
+  }
   try {
     const r = await getCategoryTree(form.type)
-    const data = r?.data || []
-    categoryOptions.value = flatten(data)
-  } catch (_) { categoryOptions.value = [] }
+    const data = r?.data || r?.data?.data || []
+    const filtered = filterActiveCategories(Array.isArray(data) ? data : [])
+    categoryOptions.value = flatten(filtered)
+  } catch (_) {
+    categoryOptions.value = []
+  }
 }
 
-watch(() => form.type, () => { form.category_id = null; form.to_account_id = null; loadCategories() })
+function handleAccountChange () {
+  creditWarning.value = null
+  if (selectedAccount.value?.currency) {
+    const code = selectedAccount.value.currency
+    if (currencyOptions.value.some(c => c.value === code)) form.currency = code
+  }
+  checkCreditLimit()
+}
+
+function handleToAccountChange () {
+  if (form.type === 'transfer' && selectedToAccount.value?.currency) {
+    const code = selectedToAccount.value.currency
+    if (currencyOptions.value.some(c => c.value === code)) form.currency = code
+  }
+}
+
+function checkCreditLimit () {
+  if (!selectedAccount.value || form.amount == null) {
+    creditWarning.value = null
+    return
+  }
+  const account = selectedAccount.value
+  if ((account.type === 'credit_card' || account.type === 'loan') && account.credit_limit) {
+    const newBalance = account.current_balance - Number(form.amount)
+    if (newBalance < -account.credit_limit) {
+      creditWarning.value = `May exceed credit limit. New balance: ${formatCurrency(newBalance, account.currency)}`
+    } else {
+      creditWarning.value = null
+    }
+  } else {
+    creditWarning.value = null
+  }
+}
+
+function selectType (value) {
+  form.type = value
+  showTypePicker.value = false
+  if (value === 'transfer') {
+    form.category_id = null
+    form.to_account_id = form.account_id ? null : form.to_account_id
+  }
+  form.account_id = null
+  form.to_account_id = null
+  loadCategories()
+}
+
+function selectAccount (value) {
+  form.account_id = value
+  showAccountPicker.value = false
+  handleAccountChange()
+}
+
+function selectToAccount (value) {
+  form.to_account_id = value
+  showToAccountPicker.value = false
+  handleToAccountChange()
+}
+
+function onDateChange (e) {
+  const v = e.detail.value
+  if (v) form.transaction_date = normalizeTransactionDateTime(v)
+}
+
+watch(() => form.type, (newType, oldType) => {
+  if (newType === oldType) return
+  if (newType !== 'transfer') {
+    loadCategories()
+    form.category_id = null
+  } else {
+    categoryOptions.value = []
+    form.category_id = null
+  }
+  if ((newType === 'transfer' && oldType !== 'transfer') || (newType !== 'transfer' && oldType === 'transfer')) {
+    form.account_id = null
+    form.to_account_id = null
+  }
+})
+
+watch([() => form.amount, () => form.account_id], () => checkCreditLimit())
 
 async function loadEdit () {
   if (!id) return
@@ -247,52 +414,95 @@ async function loadEdit () {
       form.account_id = t.account_id ?? null
       form.to_account_id = t.to_account_id ?? null
       form.category_id = t.category_id ?? null
-      form.amount = t.amount ?? ''
+      form.amount = parseFloat(t.amount) || 0
       form.currency = t.currency || 'USD'
       form.description = t.description || ''
-      form.transaction_date = t.transaction_date ? new Date(t.transaction_date).toISOString().split('T')[0] : form.transaction_date
+      form.transaction_date = normalizeTransactionDateTime(t.transaction_date)
       form.status = t.status || 'completed'
       await loadCategories()
     }
-  } catch (e) { showToast('Failed to load'); router.back() }
+  } catch (e) {
+    showToast('Failed to load')
+    router.back()
+  }
 }
 
 async function submit () {
-  if (!form.transaction_number || !form.account_id || (form.type === 'transfer' ? !form.to_account_id : !form.category_id) || form.amount == null || form.amount === '') {
-    showToast('Fill required fields')
+  const amt = Number(form.amount)
+  if (!form.transaction_number?.trim()) {
+    showToast('Enter transaction number')
+    return
+  }
+  if (!form.account_id) {
+    showToast('Select an account')
+    return
+  }
+  if (form.type === 'transfer' && !form.to_account_id) {
+    showToast('Select to account')
+    return
+  }
+  if (form.type !== 'transfer' && !form.category_id) {
+    showToast('Select a category')
+    return
+  }
+  if (amt < 0.01) {
+    showToast('Amount must be greater than 0')
     return
   }
   saving.value = true
   try {
     const body = {
-      transaction_number: form.transaction_number,
+      transaction_number: form.transaction_number.trim(),
       type: form.type,
       account_id: form.account_id,
       to_account_id: form.type === 'transfer' ? form.to_account_id : null,
       category_id: form.type !== 'transfer' ? form.category_id : null,
-      amount: parseFloat(form.amount) || 0,
+      amount: amt,
       currency: form.currency,
-      description: form.description || null,
-      transaction_date: form.transaction_date,
+      description: form.description?.trim() || null,
+      transaction_date: normalizeTransactionDateTime(form.transaction_date),
       status: form.status
     }
     if (isEdit) await updateTransaction(id, body)
     else await createTransaction(body)
     showToast(isEdit ? 'Updated' : 'Created')
     router.back()
-  } catch (e) { showToast(e?.message || 'Failed') } finally { saving.value = false }
+  } catch (e) {
+    showToast(e?.message || 'Failed')
+  } finally {
+    saving.value = false
+  }
 }
 
+const validTypes = ['income', 'expense', 'transfer']
 onMounted(async () => {
   await loadOptions()
-  if (isEdit) await loadEdit()
-  else {
+  if (isEdit) {
+    await loadEdit()
+  } else {
+    const queryType = route.query.type
+    if (queryType && validTypes.includes(queryType)) form.type = queryType
     form.transaction_number = `TXN-${Date.now()}`
+    form.transaction_date = getCurrentDateTimeString()
+    form.amount = 0
     await loadCategories()
+    try {
+      const res = await getPrimaryAccount()
+      const primaryId = res?.data?.account_id ?? null
+      if (primaryId != null && accountOptions.value.some(a => a.id === primaryId)) {
+        form.account_id = primaryId
+        handleAccountChange()
+      }
+    } catch (_) {}
   }
 })
 </script>
 
 <style scoped>
 ion-content { --background: #f7f8fa; }
+.balance-note { --min-height: 32px; }
+.balance-note ion-note { font-size: 12px; }
+.positive { color: var(--ion-color-success); }
+.negative { color: var(--ion-color-danger); }
+.credit-warning ion-note { font-size: 12px; }
 </style>

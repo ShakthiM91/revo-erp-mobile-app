@@ -15,17 +15,17 @@ export function updateSettings(data) {
   })
 }
 
-// Tenant-specific settings (uses tenant context from headers)
-export function getTenantSettings(tenantId) {
+// Tenant-specific settings (tenant id from token, same as tenant-admin)
+export function getTenantSettings() {
   return request({
-    url: `/api/tenants/${tenantId}`,
+    url: '/api/tenants/me',
     method: 'get'
   })
 }
 
-export function updateTenantSettings(tenantId, data) {
+export function updateTenantSettings(data) {
   return request({
-    url: `/api/tenants/${tenantId}`,
+    url: '/api/tenants/me',
     method: 'put',
     data
   })

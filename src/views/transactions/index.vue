@@ -4,8 +4,14 @@
       <ion-toolbar>
         <ion-title>Transactions</ion-title>
         <ion-buttons slot="end">
-          <ion-button @click="$router.push('/transactions/create')">
-            <ion-icon :icon="addOutline" />
+          <ion-button @click="$router.push('/transactions/create?type=income')" class="toolbar-btn income" title="Add income">
+            <ion-icon :icon="arrowDownOutline" />
+          </ion-button>
+          <ion-button @click="$router.push('/transactions/create?type=expense')" class="toolbar-btn expense" title="Add expense">
+            <ion-icon :icon="arrowUpOutline" />
+          </ion-button>
+          <ion-button @click="$router.push('/transactions/create?type=transfer')" class="toolbar-btn transfer" title="Add transfer">
+            <ion-icon :icon="swapHorizontalOutline" />
           </ion-button>
         </ion-buttons>
       </ion-toolbar>
@@ -20,6 +26,7 @@
           </ion-row>
         </ion-grid>
       </div>
+
 
       <ion-item lines="none">
         <ion-select label="Type" :value="listQuery.type" @ionChange="onTypeFilter($event)" interface="action-sheet" placeholder="All">
@@ -98,9 +105,10 @@ import {
   IonSkeletonText,
   IonInfiniteScroll,
   IonInfiniteScrollContent,
-  IonNote
+  IonNote,
+  onIonViewDidEnter
 } from '@ionic/vue'
-import { addOutline } from 'ionicons/icons'
+import { arrowDownOutline, arrowUpOutline, swapHorizontalOutline } from 'ionicons/icons'
 import { showToast, showConfirmDialog } from '@/utils/ionicFeedback'
 import { getTransactions, deleteTransaction, getSummary } from '@/api/accounting'
 import { getTenantDefaultCurrency } from '@/api/currency'
@@ -162,10 +170,14 @@ async function onFilter () {
   await load()
 }
 
-async function onRefresh (ev) {
+async function refreshData () {
   listQuery.value.offset = 0
   finished.value = false
   await Promise.all([load(), fetchSummary()])
+}
+
+async function onRefresh (ev) {
+  await refreshData()
   ev.target.complete()
 }
 
@@ -187,6 +199,10 @@ async function onDelete (row) {
   }
 }
 
+onIonViewDidEnter(() => {
+  refreshData()
+})
+
 onMounted(async () => {
   try {
     const r = await getTenantDefaultCurrency()
@@ -195,8 +211,6 @@ onMounted(async () => {
   } catch (e) {
     showToast('Failed to load default currency', e?.message)
   }
-  await fetchSummary()
-  await load()
 })
 </script>
 
@@ -208,9 +222,17 @@ ion-content { --background: #f7f8fa; }
 .sum-val { font-size: 13px; font-weight: 600; }
 .sum-val.income { color: #07c160; }
 .sum-val.expense { color: #ee0a24; }
+.quick-actions { display: flex; gap: 8px; padding: 12px 16px; flex-wrap: wrap; }
+.quick-actions .quick-btn { flex: 1; min-width: 0; margin: 0; }
+.quick-actions .quick-btn.income { --border-color: #07c160; --color: #07c160; }
+.quick-actions .quick-btn.expense { --border-color: #ee0a24; --color: #ee0a24; }
+.quick-actions .quick-btn.transfer { --border-color: #1989fa; --color: #1989fa; }
 .list-skeleton { padding: 12px 16px; }
 .empty-state { padding: 48px 16px; text-align: center; }
 .income { color: #07c160; }
 .expense { color: #ee0a24; }
 .transfer { color: #1989fa; }
+.toolbar-btn.income ion-icon { color: #07c160; }
+.toolbar-btn.expense ion-icon { color: #ee0a24; }
+.toolbar-btn.transfer ion-icon { color: #1989fa; }
 </style>

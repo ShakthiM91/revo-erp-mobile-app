@@ -80,7 +80,7 @@ async function loadBranding () {
     return
   }
   try {
-    const res = await getTenant(tenantId)
+    const res = await getTenant()
     const data = res?.data
     if (!data) return
     const settings = typeof data.settings === 'string' ? JSON.parse(data.settings || '{}') : (data.settings || {})
