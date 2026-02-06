@@ -68,12 +68,14 @@ import {
 import { addOutline } from 'ionicons/icons'
 import { showToast, showConfirmDialog } from '@/utils/ionicFeedback'
 import { getProjects, deleteProject } from '@/api/work'
+import { getTenantDefaultCurrency } from '@/api/currency'
 
 const list = ref([])
 const loading = ref(false)
+const defaultCurrency = ref({ code: 'USD' })
 
 function formatCurrency(v) {
-  return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 2 }).format(v || 0)
+  return new Intl.NumberFormat('en-US', { style: 'currency', currency: defaultCurrency.value?.code || 'USD', minimumFractionDigits: 2 }).format(v || 0)
 }
 
 function formatStatus(s) {
@@ -105,6 +107,14 @@ async function onRefresh(ev) {
   ev.target.complete()
 }
 
+async function loadDefaultCurrency() {
+  try {
+    const r = await getTenantDefaultCurrency()
+    const c = r?.data?.data ?? r?.data
+    if (c?.code) defaultCurrency.value = c
+  } catch (_) {}
+}
+
 async function onDelete(row) {
   try {
     await showConfirmDialog({ title: 'Delete', message: `Delete "${row.title}"?` })
@@ -116,7 +126,10 @@ async function onDelete(row) {
   }
 }
 
-onMounted(() => load())
+onMounted(async () => {
+  await loadDefaultCurrency()
+  await load()
+})
 </script>
 
 <style scoped>

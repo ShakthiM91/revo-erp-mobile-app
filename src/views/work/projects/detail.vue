@@ -43,7 +43,7 @@
           <ion-item>
             <ion-label>
               <h2>Total Amount</h2>
-              <p>{{ formatCurrency(project.total_amount) }} {{ project.currency }}</p>
+              <p>{{ formatCurrency(project.total_amount) }}</p>
             </ion-label>
           </ion-item>
           <ion-item>
@@ -93,13 +93,15 @@ import {
   IonNote
 } from '@ionic/vue'
 import { getProjectById } from '@/api/work'
+import { getTenantDefaultCurrency } from '@/api/currency'
 
 const route = useRoute()
 const project = reactive({})
 const loading = ref(true)
+const defaultCurrency = ref({ code: 'USD' })
 
 function formatCurrency(v) {
-  return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 2 }).format(v || 0)
+  return new Intl.NumberFormat('en-US', { style: 'currency', currency: defaultCurrency.value?.code || 'USD', minimumFractionDigits: 2 }).format(v || 0)
 }
 
 function formatStatus(s) {
@@ -127,7 +129,18 @@ async function load() {
   }
 }
 
-onMounted(() => load())
+async function loadDefaultCurrency() {
+  try {
+    const r = await getTenantDefaultCurrency()
+    const c = r?.data?.data ?? r?.data
+    if (c?.code) defaultCurrency.value = c
+  } catch (_) {}
+}
+
+onMounted(async () => {
+  await loadDefaultCurrency()
+  await load()
+})
 watch(() => route.params.id, () => load())
 </script>
 

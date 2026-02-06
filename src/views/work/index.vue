@@ -3,7 +3,11 @@
     <ion-header>
       <ion-toolbar>
         <ion-buttons slot="start">
-          <ion-back-button default-href="/dashboard" />
+          <ion-menu-toggle>
+            <ion-button>
+              <ion-icon :icon="menuOutline" />
+            </ion-button>
+          </ion-menu-toggle>
         </ion-buttons>
         <ion-title>Work</ion-title>
       </ion-toolbar>
@@ -81,7 +85,7 @@ import {
   IonHeader,
   IonToolbar,
   IonButtons,
-  IonBackButton,
+  IonMenuToggle,
   IonTitle,
   IonContent,
   IonRefresher,
@@ -97,14 +101,16 @@ import {
   IonCardTitle,
   IonCardContent
 } from '@ionic/vue'
-import { folderOutline, peopleOutline, pricetagOutline } from 'ionicons/icons'
+import { folderOutline, peopleOutline, pricetagOutline, menuOutline } from 'ionicons/icons'
 import { getDashboardStats, getProjects } from '@/api/work'
+import { getTenantDefaultCurrency } from '@/api/currency'
 
 const stats = ref({})
 const recentProjects = ref([])
+const defaultCurrency = ref({ code: 'USD' })
 
 function formatCurrency(v) {
-  return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 2 }).format(v || 0)
+  return new Intl.NumberFormat('en-US', { style: 'currency', currency: defaultCurrency.value?.code || 'USD', minimumFractionDigits: 2 }).format(v || 0)
 }
 
 function formatStatus(s) {
@@ -133,7 +139,18 @@ async function onRefresh(ev) {
   ev.target.complete()
 }
 
-onMounted(() => load())
+async function loadDefaultCurrency() {
+  try {
+    const r = await getTenantDefaultCurrency()
+    const c = r?.data?.data ?? r?.data
+    if (c?.code) defaultCurrency.value = c
+  } catch (_) {}
+}
+
+onMounted(async () => {
+  await loadDefaultCurrency()
+  await load()
+})
 </script>
 
 <style scoped>
