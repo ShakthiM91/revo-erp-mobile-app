@@ -3,7 +3,11 @@
     <ion-header>
       <ion-toolbar>
         <ion-buttons slot="start">
-          <ion-back-button default-href="/members" />
+          <ion-menu-toggle>
+            <ion-button>
+              <ion-icon :icon="menuOutline" />
+            </ion-button>
+          </ion-menu-toggle>
         </ion-buttons>
         <ion-title>Member Roles</ion-title>
         <ion-buttons slot="end">
@@ -68,7 +72,7 @@ import {
   IonHeader,
   IonToolbar,
   IonButtons,
-  IonBackButton,
+  IonMenuToggle,
   IonTitle,
   IonButton,
   IonIcon,
@@ -84,7 +88,7 @@ import {
   IonBadge,
   IonNote
 } from '@ionic/vue'
-import { addOutline } from 'ionicons/icons'
+import { addOutline, menuOutline } from 'ionicons/icons'
 import { showToast, showConfirmDialog } from '@/utils/ionicFeedback'
 import { getRoles, deleteRole } from '@/api/role'
 import RoleForm from './RoleForm.vue'

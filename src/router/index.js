@@ -43,7 +43,7 @@ const routes = [
         path: 'accounts',
         name: 'Accounts',
         component: () => import('@/views/accounts/index.vue'),
-        meta: { title: 'Accounts', showTabbar: false, backHref: '/transactions', headerEnd: { to: '/accounts/create', icon: 'add' } }
+        meta: { title: 'Accounts', showTabbar: false, showLayoutHeader:false }
       },
       {
         path: 'accounts/create',
@@ -133,13 +133,13 @@ const routes = [
         path: 'members',
         name: 'Members',
         component: () => import('@/views/members/index.vue'),
-        meta: { title: 'Members', showTabbar: false, backHref: '/me', headerEnd: { to: '/members/create', icon: 'add' } }
+        meta: { title: 'Members', showTabbar: false, showLayoutHeader: false }
       },
       {
         path: 'members/roles',
         name: 'MemberRoles',
         component: () => import('@/views/roles/index.vue'),
-        meta: { title: 'Member Roles', showTabbar: false, backHref: '/members', showLayoutHeader: false }
+        meta: { title: 'Member Roles', showTabbar: false, showLayoutHeader: false }
       },
       {
         path: 'members/create',

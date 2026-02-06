@@ -239,11 +239,33 @@ const statusCols = [{ text: 'Completed', value: 'completed' }, { text: 'Pending'
 
 const typeText = computed(() => typeCols.find(c => c.value === form.type)?.text || form.type)
 const statusText = computed(() => statusCols.find(c => c.value === form.status)?.text || form.status)
-const selectedAccount = computed(() => form.account_id ? accountOptions.value.find(a => a.id === form.account_id) : null)
-const selectedToAccount = computed(() => form.to_account_id ? accountOptions.value.find(a => a.id === form.to_account_id) : null)
-const accountText = computed(() => selectedAccount.value ? `${selectedAccount.value.name} (${formatCurrency(selectedAccount.value.current_balance, selectedAccount.value.currency)})` : '')
-const toAccountText = computed(() => selectedToAccount.value ? `${selectedToAccount.value.name} (${formatCurrency(selectedToAccount.value.current_balance, selectedToAccount.value.currency)})` : '')
-const categoryText = computed(() => categoryOptions.value.find(c => c.value === form.category_id)?.text || '')
+const selectedAccount = computed(() => {
+  if (form.account_id == null) return null
+  const id = Number(form.account_id)
+  return accountOptions.value.find(a => Number(a.id) === id) || null
+})
+const selectedToAccount = computed(() => {
+  if (form.to_account_id == null) return null
+  const id = Number(form.to_account_id)
+  return accountOptions.value.find(a => Number(a.id) === id) || null
+})
+const accountText = computed(() => {
+  const acc = selectedAccount.value
+  if (!acc) return ''
+  const bal = acc.current_balance ?? acc.balance ?? 0
+  return `${acc.name} (${formatCurrency(bal, acc.currency)})`
+})
+const toAccountText = computed(() => {
+  const acc = selectedToAccount.value
+  if (!acc) return ''
+  const bal = acc.current_balance ?? acc.balance ?? 0
+  return `${acc.name} (${formatCurrency(bal, acc.currency)})`
+})
+const categoryText = computed(() => {
+  if (form.category_id == null) return ''
+  const id = Number(form.category_id)
+  return categoryOptions.value.find(c => Number(c.value) === id)?.text || ''
+})
 const currencyText = computed(() => currencyOptions.value.find(c => c.value === form.currency)?.text || form.currency)
 const dateText = computed(() => form.transaction_date || '')
 
@@ -257,15 +279,16 @@ function formatCurrency (amount, currency = 'USD') {
 
 const accountCols = computed(() =>
   accountOptions.value.map(a => ({
-    text: `${a.name} (${formatCurrency(a.current_balance, a.currency)})`,
-    value: a.id
+    text: `${a.name} (${formatCurrency(a.current_balance ?? a.balance, a.currency)})`,
+    value: Number(a.id)
   }))
 )
-const toAccountCols = computed(() =>
-  accountOptions.value
-    .filter(a => a.id !== form.account_id)
-    .map(a => ({ text: `${a.name} (${formatCurrency(a.current_balance, a.currency)})`, value: a.id }))
-)
+const toAccountCols = computed(() => {
+  const fromId = form.account_id != null ? Number(form.account_id) : null
+  return accountOptions.value
+    .filter(a => Number(a.id) !== fromId)
+    .map(a => ({ text: `${a.name} (${formatCurrency(a.current_balance ?? a.balance, a.currency)})`, value: Number(a.id) }))
+})
 const categoryCols = computed(() => categoryOptions.value.map(c => ({ text: c.text, value: c.value })))
 const currencyCols = computed(() => currencyOptions.value.map(c => ({ text: c.text, value: c.value })))
 
@@ -282,7 +305,7 @@ function flatten (arr, pre = '') {
   const out = []
   for (const c of arr || []) {
     const t = pre ? `${pre} > ${c.name}` : c.name
-    out.push({ value: c.id, text: t })
+    out.push({ value: Number(c.id), text: t })
     if (c.children?.length) out.push(...flatten(c.children, t))
   }
   return out
@@ -409,17 +432,20 @@ async function loadEdit () {
     const r = await getTransactionById(id)
     const t = r?.data || r
     if (t) {
+      const categoryId = t.category_id != null ? Number(t.category_id) : null
+      const accountId = t.account_id != null ? Number(t.account_id) : null
+      const toAccountId = t.to_account_id != null ? Number(t.to_account_id) : null
       form.transaction_number = t.transaction_number || ''
       form.type = t.type || 'income'
-      form.account_id = t.account_id ?? null
-      form.to_account_id = t.to_account_id ?? null
-      form.category_id = t.category_id ?? null
       form.amount = parseFloat(t.amount) || 0
       form.currency = t.currency || 'USD'
       form.description = t.description || ''
       form.transaction_date = normalizeTransactionDateTime(t.transaction_date)
       form.status = t.status || 'completed'
       await loadCategories()
+      form.account_id = accountId
+      form.to_account_id = toAccountId
+      form.category_id = categoryId
     }
   } catch (e) {
     showToast('Failed to load')

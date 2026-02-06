@@ -3,7 +3,11 @@
     <ion-header>
       <ion-toolbar>
         <ion-buttons slot="start">
-          <ion-back-button default-href="/transactions" />
+          <ion-menu-toggle>
+            <ion-button>
+              <ion-icon :icon="menuOutline" />
+            </ion-button>
+          </ion-menu-toggle>
         </ion-buttons>
         <ion-title>Categories</ion-title>
         <ion-buttons slot="end">
@@ -57,7 +61,7 @@ import {
   IonHeader,
   IonToolbar,
   IonButtons,
-  IonBackButton,
+  IonMenuToggle,
   IonTitle,
   IonButton,
   IonIcon,
@@ -70,7 +74,7 @@ import {
   IonSpinner,
   IonNote
 } from '@ionic/vue'
-import { addOutline } from 'ionicons/icons'
+import { addOutline, menuOutline } from 'ionicons/icons'
 import { showToast, showConfirmDialog } from '@/utils/ionicFeedback'
 import { getCategoryTree, deleteCategory, toggleCategoryActive } from '@/api/accounting'
 import CategoryItem from './CategoryItem.vue'

@@ -3,7 +3,11 @@
     <ion-header>
       <ion-toolbar>
         <ion-buttons slot="start">
-          <ion-back-button default-href="/transactions" />
+          <ion-menu-toggle>
+            <ion-button>
+              <ion-icon :icon="menuOutline" />
+            </ion-button>
+          </ion-menu-toggle>
         </ion-buttons>
         <ion-title>Transactions</ion-title>
         <ion-buttons slot="end">
@@ -89,7 +93,7 @@ import {
   IonToolbar,
   IonTitle,
   IonButtons,
-  IonBackButton,
+  IonMenuToggle,
   IonButton,
   IonIcon,
   IonContent,
@@ -112,7 +116,7 @@ import {
   IonNote,
   onIonViewDidEnter
 } from '@ionic/vue'
-import { arrowDownOutline, arrowUpOutline, swapHorizontalOutline } from 'ionicons/icons'
+import { arrowDownOutline, arrowUpOutline, swapHorizontalOutline, menuOutline } from 'ionicons/icons'
 import { showToast, showConfirmDialog } from '@/utils/ionicFeedback'
 import { getTransactions, deleteTransaction, getSummary } from '@/api/accounting'
 import { getTenantDefaultCurrency } from '@/api/currency'

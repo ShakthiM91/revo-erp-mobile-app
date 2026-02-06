@@ -9,7 +9,8 @@
           </h2>
           <p v-if="category.description">{{ category.description }}</p>
         </ion-label>
-        <ion-badge v-if="category.is_default" color="medium" slot="end">Default</ion-badge>
+        <!-- <ion-badge v-if="category.is_default" color="primary" slot="end">Default</ion-badge> -->
+        <ion-badge v-if="category.is_default" color="danger">Default</ion-badge>
         <ion-badge v-else-if="!category.is_active" color="warning" slot="end">Inactive</ion-badge>
       </ion-item>
       <ion-item-options v-if="!category.is_default && category.tenant_id != null" side="end">
