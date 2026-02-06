@@ -1,4 +1,11 @@
-import { toastController, alertController } from '@ionic/vue'
+import { toastController, alertController, actionSheetController } from '@ionic/vue'
+
+export async function showActionSheet({ header, buttons }) {
+  const sheet = await actionSheetController.create({ header, buttons })
+  await sheet.present()
+  const { role } = await sheet.onDidDismiss()
+  return role
+}
 
 export async function showToast(message) {
   const toast = await toastController.create({

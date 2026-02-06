@@ -28,7 +28,7 @@
         <ion-refresher-content />
       </ion-refresher>
       <ion-spinner v-if="loading" name="crescent" class="spinner" />
-      <ion-list v-else-if="displayCategories.length" lines="inset">
+      <ion-accordion-group v-else-if="displayCategories.length" :multiple="true" class="categories-accordion">
         <template v-for="cat in displayCategories" :key="cat.id">
           <CategoryItem
             :category="cat"
@@ -38,7 +38,7 @@
             @add-child="(parentId) => openForm(null, parentId)"
           />
         </template>
-      </ion-list>
+      </ion-accordion-group>
       <div v-else class="empty-state">
         <ion-note>No {{ activeTab }} categories</ion-note>
       </div>
@@ -70,7 +70,7 @@ import {
   IonContent,
   IonRefresher,
   IonRefresherContent,
-  IonList,
+  IonAccordionGroup,
   IonSpinner,
   IonNote
 } from '@ionic/vue'
@@ -176,4 +176,5 @@ onMounted(() => load())
 ion-content { --background: #f7f8fa; }
 .spinner { margin: 48px auto; display: block; }
 .empty-state { padding: 48px 16px; text-align: center; }
+.categories-accordion { padding: 0; }
 </style>
