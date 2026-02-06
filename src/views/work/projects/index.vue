@@ -3,7 +3,11 @@
     <ion-header>
       <ion-toolbar>
         <ion-buttons slot="start">
-          <ion-back-button default-href="/work" />
+          <ion-menu-toggle>
+            <ion-button>
+              <ion-icon :icon="menuOutline" />
+            </ion-button>
+          </ion-menu-toggle>
         </ion-buttons>
         <ion-title>Projects</ion-title>
         <ion-buttons slot="end">
@@ -17,6 +21,31 @@
       <ion-refresher slot="fixed" @ionRefresh="onRefresh">
         <ion-refresher-content />
       </ion-refresher>
+      <div class="filters">
+        <ion-item>
+          <ion-label>Status</ion-label>
+          <ion-select v-model="filters.status" placeholder="All" interface="action-sheet" @ionChange="load">
+            <ion-select-option value="">All</ion-select-option>
+            <ion-select-option value="draft">Draft</ion-select-option>
+            <ion-select-option value="pending_quotes">Pending Quotes</ion-select-option>
+            <ion-select-option value="quotes_received">Quotes Received</ion-select-option>
+            <ion-select-option value="vendor_selected">Vendor Selected</ion-select-option>
+            <ion-select-option value="in_progress">In Progress</ion-select-option>
+            <ion-select-option value="completed">Completed</ion-select-option>
+            <ion-select-option value="cancelled">Cancelled</ion-select-option>
+          </ion-select>
+        </ion-item>
+        <ion-item>
+          <ion-label>Priority</ion-label>
+          <ion-select v-model="filters.priority" placeholder="All" interface="action-sheet" @ionChange="load">
+            <ion-select-option value="">All</ion-select-option>
+            <ion-select-option value="low">Low</ion-select-option>
+            <ion-select-option value="medium">Medium</ion-select-option>
+            <ion-select-option value="high">High</ion-select-option>
+            <ion-select-option value="urgent">Urgent</ion-select-option>
+          </ion-select>
+        </ion-item>
+      </div>
       <ion-spinner v-if="loading" name="crescent" class="spinner" />
       <ion-list v-else-if="list.length" lines="inset">
         <ion-item-sliding v-for="row in list" :key="row.id">
@@ -48,7 +77,7 @@ import {
   IonHeader,
   IonToolbar,
   IonButtons,
-  IonBackButton,
+  IonMenuToggle,
   IonTitle,
   IonButton,
   IonIcon,
@@ -61,11 +90,12 @@ import {
   IonItemOptions,
   IonItemOption,
   IonLabel,
-  IonBadge,
   IonNote,
-  IonSpinner
+  IonSpinner,
+  IonSelect,
+  IonSelectOption
 } from '@ionic/vue'
-import { addOutline } from 'ionicons/icons'
+import { addOutline, menuOutline } from 'ionicons/icons'
 import { showToast, showConfirmDialog } from '@/utils/ionicFeedback'
 import { getProjects, deleteProject } from '@/api/work'
 import { getTenantDefaultCurrency } from '@/api/currency'
@@ -73,6 +103,7 @@ import { getTenantDefaultCurrency } from '@/api/currency'
 const list = ref([])
 const loading = ref(false)
 const defaultCurrency = ref({ code: 'USD' })
+const filters = ref({ status: '', priority: '' })
 
 function formatCurrency(v) {
   return new Intl.NumberFormat('en-US', { style: 'currency', currency: defaultCurrency.value?.code || 'USD', minimumFractionDigits: 2 }).format(v || 0)
@@ -91,7 +122,10 @@ function statusColor(s) {
 async function load() {
   loading.value = true
   try {
-    const res = await getProjects()
+    const params = {}
+    if (filters.value.status) params.status = filters.value.status
+    if (filters.value.priority) params.priority = filters.value.priority
+    const res = await getProjects(params)
     const data = res?.data ?? res ?? []
     list.value = Array.isArray(data) ? data : []
   } catch (e) {
@@ -134,6 +168,9 @@ onMounted(async () => {
 
 <style scoped>
 ion-content { --background: #f7f8fa; }
+.filters { --background: transparent; padding: 8px 0; }
+.filters ion-item { --min-height: 44px; }
+.filters ion-select { max-width: 100%; }
 .spinner { margin: 48px auto; display: block; }
 .empty-state { padding: 48px 16px; text-align: center; }
 </style>

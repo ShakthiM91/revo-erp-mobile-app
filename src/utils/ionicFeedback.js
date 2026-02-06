@@ -17,15 +17,15 @@ export async function showToast(message) {
   await toast.present()
 }
 
-export async function showConfirmDialog({ title, message }) {
+export async function showConfirmDialog({ title, message, confirmText = 'OK', cancelText = 'Cancel' }) {
   return new Promise((resolve, reject) => {
     alertController
       .create({
         header: title,
         message,
         buttons: [
-          { text: 'Cancel', role: 'cancel', handler: () => reject('cancel') },
-          { text: 'OK', role: 'confirm', handler: () => resolve() }
+          { text: cancelText, role: 'cancel', handler: () => reject('cancel') },
+          { text: confirmText, role: 'confirm', handler: () => resolve() }
         ]
       })
       .then((alert) => alert.present())

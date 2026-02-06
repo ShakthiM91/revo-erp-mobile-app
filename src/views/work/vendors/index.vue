@@ -3,7 +3,11 @@
     <ion-header>
       <ion-toolbar>
         <ion-buttons slot="start">
-          <ion-back-button default-href="/work" />
+          <ion-menu-toggle>
+            <ion-button>
+              <ion-icon :icon="menuOutline" />
+            </ion-button>
+          </ion-menu-toggle>
         </ion-buttons>
         <ion-title>Vendors</ion-title>
         <ion-buttons slot="end">
@@ -17,6 +21,23 @@
       <ion-refresher slot="fixed" @ionRefresh="onRefresh">
         <ion-refresher-content />
       </ion-refresher>
+      <div class="filters">
+        <ion-item>
+          <ion-label>Category</ion-label>
+          <ion-select v-model="filters.category_id" placeholder="All" interface="action-sheet" @ionChange="load">
+            <ion-select-option value="">All</ion-select-option>
+            <ion-select-option v-for="c in categories" :key="c.id" :value="c.id">{{ c.name }}</ion-select-option>
+          </ion-select>
+        </ion-item>
+        <ion-item>
+          <ion-label>Status</ion-label>
+          <ion-select v-model="filters.is_active" placeholder="All" interface="action-sheet" @ionChange="load">
+            <ion-select-option value="all">All</ion-select-option>
+            <ion-select-option value="true">Active</ion-select-option>
+            <ion-select-option value="false">Inactive</ion-select-option>
+          </ion-select>
+        </ion-item>
+      </div>
       <ion-spinner v-if="loading" name="crescent" class="spinner" />
       <ion-list v-else-if="list.length" lines="inset">
         <ion-item-sliding v-for="row in list" :key="row.id">
@@ -48,7 +69,7 @@ import {
   IonHeader,
   IonToolbar,
   IonButtons,
-  IonBackButton,
+  IonMenuToggle,
   IonTitle,
   IonButton,
   IonIcon,
@@ -63,15 +84,18 @@ import {
   IonLabel,
   IonBadge,
   IonNote,
-  IonSpinner
+  IonSpinner,
+  IonSelect,
+  IonSelectOption
 } from '@ionic/vue'
-import { addOutline } from 'ionicons/icons'
+import { addOutline, menuOutline } from 'ionicons/icons'
 import { showToast, showConfirmDialog } from '@/utils/ionicFeedback'
 import { getVendors, deleteVendor, getVendorCategories } from '@/api/work'
 
 const list = ref([])
 const categories = ref([])
 const loading = ref(false)
+const filters = ref({ category_id: '', is_active: 'all' })
 
 function getCategoryName(categoryId) {
   const c = categories.value.find(x => x.id === categoryId)
@@ -92,7 +116,10 @@ async function load() {
   loading.value = true
   try {
     await loadCategories()
-    const res = await getVendors()
+    const params = {}
+    if (filters.value.category_id) params.category_id = filters.value.category_id
+    if (filters.value.is_active && filters.value.is_active !== 'all') params.is_active = filters.value.is_active
+    const res = await getVendors(params)
     const data = res?.data ?? res ?? []
     list.value = Array.isArray(data) ? data : []
   } catch (e) {
@@ -124,6 +151,9 @@ onMounted(() => load())
 
 <style scoped>
 ion-content { --background: #f7f8fa; }
+.filters { --background: transparent; padding: 8px 0; }
+.filters ion-item { --min-height: 44px; }
+.filters ion-select { max-width: 100%; }
 .spinner { margin: 48px auto; display: block; }
 .empty-state { padding: 48px 16px; text-align: center; }
 </style>

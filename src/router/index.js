@@ -43,7 +43,7 @@ const routes = [
         path: 'accounts',
         name: 'Accounts',
         component: () => import('@/views/accounts/index.vue'),
-        meta: { title: 'Accounts', showTabbar: false, showLayoutHeader:false }
+        meta: { title: 'Accounts', showTabbar: true, showLayoutHeader:false }
       },
       {
         path: 'accounts/create',
@@ -61,13 +61,13 @@ const routes = [
         path: 'reports',
         name: 'Reports',
         component: () => import('@/views/reports/index.vue'),
-        meta: { title: 'Reports', showTabbar: false, showLayoutHeader: false }
+        meta: { title: 'Reports', showTabbar: true, showLayoutHeader: false }
       },
       {
         path: 'accounting/categories',
         name: 'AccountingCategories',
         component: () => import('@/views/accounting/categories/index.vue'),
-        meta: { title: 'Categories', showTabbar: false, backHref: '/transactions', showLayoutHeader: false }
+        meta: { title: 'Categories', showTabbar: true, backHref: '/transactions', showLayoutHeader: false }
       },
       {
         path: 'assets',
@@ -103,7 +103,7 @@ const routes = [
         path: 'assets/categories',
         name: 'AssetCategories',
         component: () => import('@/views/assets/categories/index.vue'),
-        meta: { title: 'Asset Categories', showTabbar: false, backHref: '/assets', showLayoutHeader: false }
+        meta: { title: 'Asset Categories', showTabbar: true, backHref: '/assets', showLayoutHeader: false }
       },
       {
         path: 'schedule',
@@ -115,7 +115,7 @@ const routes = [
         path: 'schedule/events',
         name: 'ScheduleEvents',
         component: () => import('@/views/schedule/events/index.vue'),
-        meta: { title: 'Events', showTabbar: false, backHref: '/schedule', headerEnd: { to: '/schedule/events/create', icon: 'add' } }
+        meta: { title: 'Events', showTabbar: true, backHref: '/schedule', headerEnd: { to: '/schedule/events/create', icon: 'add' } }
       },
       {
         path: 'schedule/events/create',
@@ -133,13 +133,13 @@ const routes = [
         path: 'members',
         name: 'Members',
         component: () => import('@/views/members/index.vue'),
-        meta: { title: 'Members', showTabbar: false, showLayoutHeader: false }
+        meta: { title: 'Members', showTabbar: true, showLayoutHeader: false }
       },
       {
         path: 'members/roles',
         name: 'MemberRoles',
         component: () => import('@/views/roles/index.vue'),
-        meta: { title: 'Member Roles', showTabbar: false, showLayoutHeader: false }
+        meta: { title: 'Member Roles', showTabbar: true, showLayoutHeader: false }
       },
       {
         path: 'members/create',
@@ -169,25 +169,31 @@ const routes = [
         path: 'profile',
         name: 'Profile',
         component: () => import('@/views/profile/index.vue'),
-        meta: { title: 'Profile', showTabbar: false, showLayoutHeader: false }
+        meta: { title: 'Profile', showTabbar: true, showLayoutHeader: false }
       },
       {
         path: 'settings',
         name: 'Settings',
         component: () => import('@/views/settings/index.vue'),
-        meta: { title: 'Settings', showTabbar: false, showLayoutHeader: false }
+        meta: { title: 'Settings', showTabbar: true, showLayoutHeader: false }
       },
       {
         path: 'work',
         name: 'Work',
         component: () => import('@/views/work/index.vue'),
-        meta: { title: 'Work', showTabbar: false, showLayoutHeader: false }
+        meta: { title: 'Work', showTabbar: true, showLayoutHeader: false }
+      },
+      {
+        path: 'work/dashboard',
+        name: 'WorkDashboard',
+        component: () => import('@/views/work/dashboard/index.vue'),
+        meta: { title: 'Work Dashboard', showTabbar: true, backHref: '/work', showLayoutHeader: false }
       },
       {
         path: 'work/projects',
         name: 'WorkProjects',
         component: () => import('@/views/work/projects/index.vue'),
-        meta: { title: 'Projects', showTabbar: false, backHref: '/work', headerEnd: { to: '/work/projects/create', icon: 'add' } }
+        meta: { title: 'Projects', showTabbar: true, showLayoutHeader: false }
       },
       {
         path: 'work/projects/create',
@@ -211,25 +217,37 @@ const routes = [
         path: 'work/vendors',
         name: 'WorkVendors',
         component: () => import('@/views/work/vendors/index.vue'),
-        meta: { title: 'Vendors', showTabbar: false, backHref: '/work', headerEnd: { to: '/work/vendors/create', icon: 'add' } }
+        meta: { title: 'Vendors', showTabbar: true, showLayoutHeader: false }
       },
       {
         path: 'work/vendors/create',
         name: 'WorkVendorCreate',
         component: () => import('@/views/work/vendors/VendorForm.vue'),
-        meta: { title: 'Add Vendor', showTabbar: false }
+        meta: { title: 'Add Vendor', showTabbar: false, showLayoutHeader: false }
       },
       {
         path: 'work/vendors/:id',
         name: 'WorkVendorEdit',
         component: () => import('@/views/work/vendors/VendorForm.vue'),
-        meta: { title: 'Edit Vendor', showTabbar: false }
+        meta: { title: 'Edit Vendor', showTabbar: false, showLayoutHeader: false }
       },
       {
         path: 'work/categories',
         name: 'WorkCategories',
         component: () => import('@/views/work/categories/index.vue'),
-        meta: { title: 'Vendor Categories', showTabbar: false, backHref: '/work', showLayoutHeader: false }
+        meta: { title: 'Vendor Categories', showTabbar: true, showLayoutHeader: false }
+      },
+      {
+        path: 'work/categories/create',
+        name: 'WorkCategoryCreate',
+        component: () => import('@/views/work/categories/components/CategoryForm.vue'),
+        meta: { title: 'Add Category', showTabbar: false, showLayoutHeader: false }
+      },
+      {
+        path: 'work/categories/:id',
+        name: 'WorkCategoryEdit',
+        component: () => import('@/views/work/categories/components/CategoryForm.vue'),
+        meta: { title: 'Edit Category', showTabbar: false, showLayoutHeader: false }
       }
     ]
   }

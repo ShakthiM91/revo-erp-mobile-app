@@ -17,6 +17,13 @@
         <ion-refresher-content />
       </ion-refresher>
       <ion-list lines="none" class="work-links">
+        <ion-item button detail @click="$router.push('/work/dashboard')">
+          <ion-icon :icon="statsChartOutline" slot="start" />
+          <ion-label>
+            <h2>Dashboard</h2>
+            <p>Work overview and statistics</p>
+          </ion-label>
+        </ion-item>
         <ion-item button detail @click="$router.push('/work/projects')">
           <ion-icon :icon="folderOutline" slot="start" />
           <ion-label>
@@ -101,7 +108,7 @@ import {
   IonCardTitle,
   IonCardContent
 } from '@ionic/vue'
-import { folderOutline, peopleOutline, pricetagOutline, menuOutline } from 'ionicons/icons'
+import { folderOutline, peopleOutline, pricetagOutline, menuOutline, statsChartOutline } from 'ionicons/icons'
 import { getDashboardStats, getProjects } from '@/api/work'
 import { getTenantDefaultCurrency } from '@/api/currency'
 
