@@ -2,6 +2,9 @@
   <ion-page>
     <ion-header>
       <ion-toolbar>
+        <ion-buttons slot="start">
+          <ion-back-button default-href="/transactions" />
+        </ion-buttons>
         <ion-title>Transactions</ion-title>
         <ion-buttons slot="end">
           <ion-button @click="$router.push('/transactions/create?type=income')" class="toolbar-btn income" title="Add income">
@@ -86,6 +89,7 @@ import {
   IonToolbar,
   IonTitle,
   IonButtons,
+  IonBackButton,
   IonButton,
   IonIcon,
   IonContent,

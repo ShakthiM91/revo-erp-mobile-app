@@ -59,7 +59,7 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import {
   IonPage,
   IonHeader,
@@ -145,6 +145,8 @@ async function onDelete (row) {
     if (e !== 'cancel') showToast(e?.message || 'Delete failed')
   }
 }
+
+onMounted(() => load())
 </script>
 
 <style scoped>

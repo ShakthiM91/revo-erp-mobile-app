@@ -7,32 +7,16 @@
         </ion-buttons>
         <ion-title>Settings</ion-title>
       </ion-toolbar>
+      <ion-toolbar>
+        <ion-segment v-model="activeTab" @ionChange="onTabChange">
+          <ion-segment-button value="system">System</ion-segment-button>
+          <ion-segment-button value="currency">Currency</ion-segment-button>
+        </ion-segment>
+      </ion-toolbar>
     </ion-header>
     <ion-content>
-      <ion-list lines="inset">
-        <ion-item button detail @click="showSys = true">
-          <ion-label>System Settings</ion-label>
-        </ion-item>
-        <ion-item disabled>
-          <ion-label>Currency</ion-label>
-        </ion-item>
-      </ion-list>
-
-      <ion-modal :is-open="showSys" @didDismiss="showSys = false">
-        <ion-header>
-          <ion-toolbar>
-            <ion-title>System Settings</ion-title>
-            <ion-buttons slot="end">
-              <ion-button @click="showSys = false">Close</ion-button>
-            </ion-buttons>
-          </ion-toolbar>
-        </ion-header>
-        <ion-content class="ion-padding">
-          <div class="popup-inner">
-            <p class="hint">Manage system and tenant options. Full settings are available in the web admin.</p>
-          </div>
-        </ion-content>
-      </ion-modal>
+      <SystemSettings v-if="activeTab === 'system'" />
+      <CurrencySettings v-else-if="activeTab === 'currency'" />
     </ion-content>
   </ion-page>
 </template>
@@ -46,21 +30,18 @@ import {
   IonButtons,
   IonBackButton,
   IonTitle,
-  IonContent,
-  IonList,
-  IonItem,
-  IonLabel,
-  IonModal,
-  IonButton
+  IonSegment,
+  IonSegmentButton,
+  IonContent
 } from '@ionic/vue'
+import SystemSettings from './components/SystemSettings.vue'
+import CurrencySettings from './components/CurrencySettings.vue'
 
-const showSys = ref(false)
+const activeTab = ref('system')
+
+function onTabChange() {}
 </script>
 
 <style scoped>
-ion-content {
-  --background: #f7f8fa;
-}
-.popup-inner { padding: 16px 0; }
-.hint { font-size: 13px; color: #969799; margin: 0; }
+ion-content { --background: #f7f8fa; }
 </style>

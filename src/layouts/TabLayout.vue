@@ -1,5 +1,28 @@
 <template>
   <ion-page>
+    <ion-header v-if="!isLogin && showLayoutHeader">
+      <ion-toolbar>
+        <ion-buttons slot="start">
+          <ion-back-button v-if="backHref" :default-href="backHref" />
+          <ion-menu-toggle v-else>
+            <ion-button>
+              <ion-icon :icon="menuOutline" />
+            </ion-button>
+          </ion-menu-toggle>
+        </ion-buttons>
+        <ion-title>{{ pageTitle }}</ion-title>
+        <ion-buttons slot="end">
+          <ion-button
+            v-for="(btn, i) in headerEndButtons"
+            :key="i"
+            fill="clear"
+            @click="btn.to && router.push(btn.to)"
+          >
+            <ion-icon :icon="btn.icon" />
+          </ion-button>
+        </ion-buttons>
+      </ion-toolbar>
+    </ion-header>
     <ion-tabs>
       <ion-router-outlet />
       <ion-tab-bar v-if="showTabbar" slot="bottom">
@@ -30,9 +53,16 @@
 
 <script setup>
 import { computed } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import {
   IonPage,
+  IonHeader,
+  IonToolbar,
+  IonButtons,
+  IonBackButton,
+  IonMenuToggle,
+  IonButton,
+  IonTitle,
   IonTabs,
   IonRouterOutlet,
   IonTabBar,
@@ -41,13 +71,31 @@ import {
   IonLabel
 } from '@ionic/vue'
 import {
+  menuOutline,
   homeOutline,
   walletOutline,
   cubeOutline,
   calendarOutline,
-  personOutline
+  personOutline,
+  addOutline
 } from 'ionicons/icons'
 
+const ICON_MAP = { add: addOutline }
+
 const route = useRoute()
+const router = useRouter()
 const showTabbar = computed(() => route.meta?.showTabbar !== false)
+const showLayoutHeader = computed(() => route.meta?.showLayoutHeader !== false)
+const isLogin = computed(() => route.path === '/login')
+const pageTitle = computed(() => route.meta?.title || 'Revo ERP')
+const backHref = computed(() => route.meta?.backHref)
+const headerEndButtons = computed(() => {
+  const end = route.meta?.headerEnd
+  if (!end) return []
+  const arr = Array.isArray(end) ? end : [end]
+  return arr.map(b => ({
+    ...b,
+    icon: typeof b.icon === 'string' ? ICON_MAP[b.icon] || addOutline : b.icon
+  }))
+})
 </script>

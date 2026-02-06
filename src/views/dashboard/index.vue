@@ -2,6 +2,13 @@
   <ion-page>
     <ion-header>
       <ion-toolbar>
+        <ion-buttons slot="start">
+          <ion-menu-toggle>
+            <ion-button>
+              <ion-icon :icon="menuOutline" />
+            </ion-button>
+          </ion-menu-toggle>
+        </ion-buttons>
         <ion-title class="ion-text-center">
           <img  :src="logoUrl" class="brand-logo" alt="" />
           <span >{{ appName || 'Revo ERP' }}</span>
@@ -53,7 +60,7 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { IonPage, IonHeader, IonToolbar, IonTitle, IonContent, IonRefresher, IonRefresherContent, IonGrid, IonRow, IonCol, IonIcon } from '@ionic/vue'
-import { peopleOutline, personOutline, cubeOutline, calendarOutline } from 'ionicons/icons'
+import { peopleOutline, personOutline, cubeOutline, calendarOutline, menuOutline } from 'ionicons/icons'
 import { showToast } from '@/utils/ionicFeedback'
 import { useUserStore } from '@/store/user'
 import { getTenant } from '@/api/tenant'

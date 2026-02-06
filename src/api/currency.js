@@ -1,5 +1,13 @@
 import request from '@/utils/request'
 
+export function getCurrencies(params = {}) {
+  return request({
+    url: '/api/currencies',
+    method: 'get',
+    params
+  })
+}
+
 export function getTenantCurrencies() {
   return request({
     url: '/api/currencies/tenant',
