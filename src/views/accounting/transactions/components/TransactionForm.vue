@@ -18,9 +18,19 @@
             <ion-label position="stacked">Transaction Number</ion-label>
             <ion-input v-model="form.transaction_number" placeholder="Transaction number" />
           </ion-item>
-          <ion-item button detail @click="showTypePicker = true">
+          <ion-item>
             <ion-label position="stacked">Type</ion-label>
-            <ion-note slot="end">{{ typeText }}</ion-note>
+            <ion-segment :value="form.type" @ionChange="onTypeChange($event)">
+              <ion-segment-button value="income" class="type-income">
+                <ion-label>Income</ion-label>
+              </ion-segment-button>
+              <ion-segment-button value="expense" class="type-expense">
+                <ion-label>Expense</ion-label>
+              </ion-segment-button>
+              <ion-segment-button value="transfer" class="type-transfer">
+                <ion-label>Transfer</ion-label>
+              </ion-segment-button>
+            </ion-segment>
           </ion-item>
           <ion-item v-if="form.type !== 'transfer'" button detail @click="showAccountPicker = true">
             <ion-label position="stacked">Account</ion-label>
@@ -89,14 +99,6 @@
         </ion-list>
       </form>
 
-      <ion-modal :is-open="showTypePicker" @didDismiss="showTypePicker = false">
-        <ion-header><ion-toolbar><ion-title>Type</ion-title><ion-buttons slot="end"><ion-button @click="showTypePicker = false">Cancel</ion-button></ion-buttons></ion-toolbar></ion-header>
-        <ion-content>
-          <ion-list>
-            <ion-item v-for="c in typeCols" :key="c.value" button @click="selectType(c.value)"><ion-label>{{ c.text }}</ion-label></ion-item>
-          </ion-list>
-        </ion-content>
-      </ion-modal>
       <ion-modal :is-open="showAccountPicker" @didDismiss="showAccountPicker = false">
         <ion-header><ion-toolbar><ion-title>{{ form.type === 'transfer' ? 'From Account' : 'Account' }}</ion-title><ion-buttons slot="end"><ion-button @click="showAccountPicker = false">Cancel</ion-button></ion-buttons></ion-toolbar></ion-header>
         <ion-content>
@@ -171,6 +173,8 @@ import {
   IonTextarea,
   IonNote,
   IonItemDivider,
+  IonSegment,
+  IonSegmentButton,
   IonModal,
   IonDatetime
 } from '@ionic/vue'
@@ -226,7 +230,6 @@ const currencyOptions = ref([{ value: 'USD', text: 'USD' }])
 const saving = ref(false)
 const creditWarning = ref(null)
 
-const showTypePicker = ref(false)
 const showAccountPicker = ref(false)
 const showToAccountPicker = ref(false)
 const showCategoryPicker = ref(false)
@@ -234,10 +237,8 @@ const showCurrencyPicker = ref(false)
 const showDatePicker = ref(false)
 const showStatusPicker = ref(false)
 
-const typeCols = [{ text: 'Income', value: 'income' }, { text: 'Expense', value: 'expense' }, { text: 'Transfer', value: 'transfer' }]
 const statusCols = [{ text: 'Completed', value: 'completed' }, { text: 'Pending', value: 'pending' }, { text: 'Cancelled', value: 'cancelled' }]
 
-const typeText = computed(() => typeCols.find(c => c.value === form.type)?.text || form.type)
 const statusText = computed(() => statusCols.find(c => c.value === form.status)?.text || form.status)
 const selectedAccount = computed(() => {
   if (form.account_id == null) return null
@@ -382,10 +383,8 @@ function checkCreditLimit () {
 
 function selectType (value) {
   form.type = value
-  showTypePicker.value = false
   if (value === 'transfer') {
     form.category_id = null
-    // Keep account_id as From Account; only clear to_account_id when same as account_id
     if (form.to_account_id != null && form.to_account_id === form.account_id) {
       form.to_account_id = null
     }
@@ -394,6 +393,11 @@ function selectType (value) {
     form.to_account_id = null
   }
   loadCategories()
+}
+
+function onTypeChange (e) {
+  const v = e.detail?.value
+  if (v) selectType(v)
 }
 
 function selectAccount (value) {
@@ -539,4 +543,19 @@ ion-content { --background: #f7f8fa; }
 .positive { color: var(--ion-color-success); }
 .negative { color: var(--ion-color-danger); }
 .credit-warning ion-note { font-size: 12px; }
+ion-segment { width: 100%; }
+ion-segment-button { flex: 1; min-width: 0; }
+/* Transaction type colors (matches tenant-admin) */
+.type-income.segment-button-checked {
+  --color: white;
+  --indicator-color: var(--ion-color-success);
+}
+.type-expense.segment-button-checked {
+  --color: white;
+  --indicator-color: var(--ion-color-danger);
+}
+.type-transfer.segment-button-checked {
+  --color: white;
+  --indicator-color: var(--ion-color-primary);
+}
 </style>
