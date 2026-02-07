@@ -64,8 +64,8 @@ import {
 import { addOutline } from 'ionicons/icons'
 import { showToast, showConfirmDialog } from '@/utils/ionicFeedback'
 import { getAssetCategoryTree, deleteAssetCategory, toggleAssetCategoryActive } from '@/api/asset'
-import AssetCategoryItem from './CategoryItem.vue'
-import AssetCategoryForm from './CategoryForm.vue'
+import AssetCategoryItem from './components/CategoryItem.vue'
+import AssetCategoryForm from './components/CategoryForm.vue'
 
 const loading = ref(false)
 const categories = ref([])

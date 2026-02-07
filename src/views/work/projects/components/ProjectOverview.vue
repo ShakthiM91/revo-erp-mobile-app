@@ -26,7 +26,7 @@
         </ion-label>
       </ion-item>
     </ion-list>
-    <div class="quick-actions">
+    <div v-if="showQuickActions" class="quick-actions">
       <ion-button expand="block" @click="$emit('add-stage')">Add Stage</ion-button>
       <ion-button expand="block" fill="outline" @click="$emit('record-payment')">Record Payment</ion-button>
       <ion-button expand="block" fill="outline" @click="$emit('add-additional-work')">Add Additional Work</ion-button>
@@ -40,7 +40,8 @@ import { IonList, IonItem, IonLabel, IonProgressBar, IonButton } from '@ionic/vu
 
 const props = defineProps({
   overview: { type: Object, default: () => ({}) },
-  currencyCode: { type: String, default: 'USD' }
+  currencyCode: { type: String, default: 'USD' },
+  showQuickActions: { type: Boolean, default: true }
 })
 
 defineEmits(['add-stage', 'record-payment', 'add-additional-work'])

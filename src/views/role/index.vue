@@ -91,9 +91,9 @@ import {
 import { addOutline, menuOutline } from 'ionicons/icons'
 import { showToast, showConfirmDialog } from '@/utils/ionicFeedback'
 import { getRoles, deleteRole } from '@/api/role'
-import RoleForm from './RoleForm.vue'
-import AssignMenus from './AssignMenus.vue'
-import AssignPermissions from './AssignPermissions.vue'
+import RoleForm from './components/RoleForm.vue'
+import AssignMenus from './components/AssignMenus.vue'
+import AssignPermissions from './components/AssignPermissions.vue'
 
 const list = ref([])
 const loading = ref(false)

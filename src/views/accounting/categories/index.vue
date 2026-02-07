@@ -77,8 +77,8 @@ import {
 import { addOutline, menuOutline } from 'ionicons/icons'
 import { showToast, showConfirmDialog } from '@/utils/ionicFeedback'
 import { getCategoryTree, deleteCategory, toggleCategoryActive } from '@/api/accounting'
-import CategoryItem from './CategoryItem.vue'
-import CategoryForm from './CategoryForm.vue'
+import CategoryItem from './components/CategoryItem.vue'
+import CategoryForm from './components/CategoryForm.vue'
 
 const activeTab = ref('income')
 const loading = ref(false)

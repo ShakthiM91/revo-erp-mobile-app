@@ -31,7 +31,7 @@
         <div v-if="reportData.length" class="report-content">
           <ion-card>
             <ion-card-header>
-              <ion-card-title>Summary {{ reportYear }}</ion-card-title>
+              <ion-card-title>Summary {{ reportYear }} ({{ defaultCurrency.code || 'USD' }})</ion-card-title>
             </ion-card-header>
             <ion-card-content>
               <div class="summary-row">
@@ -117,12 +117,14 @@ import {
 } from '@ionic/vue'
 import { showToast } from '@/utils/ionicFeedback'
 import { getReports } from '@/api/accounting'
+import { getTenantDefaultCurrency } from '@/api/currency'
 
 const reportType = ref('income-expense')
 const reportYear = ref(new Date().getFullYear().toString())
 const reportData = ref([])
 const loading = ref(false)
 const showYearPicker = ref(false)
+const defaultCurrency = ref({ code: 'USD' })
 
 const yearOptions = computed(() => {
   const y = new Date().getFullYear()
@@ -135,15 +137,19 @@ function monthName(m) {
 }
 
 const totalIncome = computed(() =>
-  reportData.value.reduce((s, r) => s + (r.income || 0), 0)
+  reportData.value.reduce((s, r) => s + (parseFloat(r.income) || 0), 0)
 )
 const totalExpense = computed(() =>
-  reportData.value.reduce((s, r) => s + (r.expense || 0), 0)
+  reportData.value.reduce((s, r) => s + (parseFloat(r.expense) || 0), 0)
 )
 const net = computed(() => totalIncome.value - totalExpense.value)
 
 function formatCurrency(v) {
-  return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 2 }).format(v || 0)
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: defaultCurrency.value?.code || 'USD',
+    minimumFractionDigits: 2
+  }).format(parseFloat(v) || 0)
 }
 
 async function fetchReports() {
@@ -166,7 +172,14 @@ async function onRefresh(ev) {
   ev.target.complete()
 }
 
-onMounted(() => fetchReports())
+onMounted(async () => {
+  try {
+    const r = await getTenantDefaultCurrency()
+    const c = r?.data?.data ?? r?.data
+    if (c?.code) defaultCurrency.value = c
+  } catch (_) {}
+  await fetchReports()
+})
 </script>
 
 <style scoped>

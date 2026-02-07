@@ -7,7 +7,7 @@
         </ion-buttons>
         <ion-title>{{ project.project_number || project.work_number || 'Project' }}</ion-title>
         <ion-buttons slot="end">
-          <ion-button v-if="project.id" @click="$router.push(`/work/projects/${project.id}/edit`)">Edit</ion-button>
+          <ion-button v-if="project.id && !isProjectLocked" @click="$router.push(`/work/projects/${project.id}/edit`)">Edit</ion-button>
         </ion-buttons>
       </ion-toolbar>
       <ion-toolbar>
@@ -48,6 +48,7 @@
           <ProjectOverview
             :overview="summary"
             :currency-code="defaultCurrency?.code || 'USD'"
+            :show-quick-actions="!isProjectLocked"
             @add-stage="handleAddStage"
             @record-payment="handleRecordPayment"
             @add-additional-work="handleAddAdditionalWork"
