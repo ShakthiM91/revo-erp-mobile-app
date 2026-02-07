@@ -385,10 +385,14 @@ function selectType (value) {
   showTypePicker.value = false
   if (value === 'transfer') {
     form.category_id = null
-    form.to_account_id = form.account_id ? null : form.to_account_id
+    // Keep account_id as From Account; only clear to_account_id when same as account_id
+    if (form.to_account_id != null && form.to_account_id === form.account_id) {
+      form.to_account_id = null
+    }
+  } else {
+    form.category_id = null
+    form.to_account_id = null
   }
-  form.account_id = null
-  form.to_account_id = null
   loadCategories()
 }
 
@@ -414,13 +418,10 @@ watch(() => form.type, (newType, oldType) => {
   if (newType !== 'transfer') {
     loadCategories()
     form.category_id = null
+    form.to_account_id = null
   } else {
     categoryOptions.value = []
     form.category_id = null
-  }
-  if ((newType === 'transfer' && oldType !== 'transfer') || (newType !== 'transfer' && oldType === 'transfer')) {
-    form.account_id = null
-    form.to_account_id = null
   }
 })
 
@@ -507,19 +508,26 @@ onMounted(async () => {
     await loadEdit()
   } else {
     const queryType = route.query.type
+    const queryAccountId = route.query.account_id
     if (queryType && validTypes.includes(queryType)) form.type = queryType
     form.transaction_number = `TXN-${Date.now()}`
     form.transaction_date = getCurrentDateTimeString()
     form.amount = 0
     await loadCategories()
-    try {
-      const res = await getPrimaryAccount()
-      const primaryId = res?.data?.account_id ?? null
-      if (primaryId != null && accountOptions.value.some(a => a.id === primaryId)) {
-        form.account_id = primaryId
-        handleAccountChange()
-      }
-    } catch (_) {}
+    const accountId = queryAccountId != null ? Number(queryAccountId) : null
+    if (accountId != null && accountOptions.value.some(a => Number(a.id) === accountId)) {
+      form.account_id = accountId
+      handleAccountChange()
+    } else {
+      try {
+        const res = await getPrimaryAccount()
+        const primaryId = res?.data?.account_id ?? null
+        if (primaryId != null && accountOptions.value.some(a => a.id === primaryId)) {
+          form.account_id = primaryId
+          handleAccountChange()
+        }
+      } catch (_) {}
+    }
   }
 })
 </script>

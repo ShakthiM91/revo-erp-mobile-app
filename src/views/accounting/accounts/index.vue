@@ -34,6 +34,7 @@
             <ion-badge v-else-if="row.is_active === false" color="medium" slot="end">Inactive</ion-badge>
           </ion-item>
           <ion-item-options side="end">
+            <ion-item-option color="success" @click="goAddTransaction(row)">Add Transaction</ion-item-option>
             <ion-item-option @click="goEdit(row)">Edit</ion-item-option>
             <ion-item-option color="danger" @click="onDelete(row)">Delete</ion-item-option>
           </ion-item-options>
@@ -90,6 +91,10 @@ function formatType(type) {
 
 function goEdit(row) {
   router.push(`/accounts/${row.id}`)
+}
+
+function goAddTransaction(row) {
+  router.push(`/transactions/create?account_id=${row.id}`)
 }
 
 async function onDelete(row) {
