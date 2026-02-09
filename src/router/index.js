@@ -59,9 +59,37 @@ const routes = [
       },
       {
         path: 'reports',
-        name: 'Reports',
+        redirect: '/reports/income-expense'
+      },
+      {
+        path: 'reports/income-expense',
+        name: 'ReportsIncomeExpense',
         component: () => import('@/views/accounting/reports/index.vue'),
-        meta: { title: 'Reports', showTabbar: true, showLayoutHeader: false }
+        meta: { title: 'Income vs Expense', showTabbar: true, showLayoutHeader: false }
+      },
+      {
+        path: 'reports/daily-trends',
+        name: 'ReportsDailyTrends',
+        component: () => import('@/views/accounting/reports/index.vue'),
+        meta: { title: 'Daily Trends', showTabbar: true, showLayoutHeader: false }
+      },
+      {
+        path: 'reports/balance-growth',
+        name: 'ReportsBalanceGrowth',
+        component: () => import('@/views/accounting/reports/index.vue'),
+        meta: { title: 'Balance Growth', showTabbar: true, showLayoutHeader: false }
+      },
+      {
+        path: 'reports/income-by-category',
+        name: 'ReportsIncomeByCategory',
+        component: () => import('@/views/accounting/reports/index.vue'),
+        meta: { title: 'Income by Category', showTabbar: true, showLayoutHeader: false }
+      },
+      {
+        path: 'reports/expense-by-category',
+        name: 'ReportsExpenseByCategory',
+        component: () => import('@/views/accounting/reports/index.vue'),
+        meta: { title: 'Expense by Category', showTabbar: true, showLayoutHeader: false }
       },
       {
         path: 'accounting/categories',
