@@ -52,6 +52,12 @@ const routes = [
         meta: { title: 'Add Account', showTabbar: false, showLayoutHeader: false }
       },
       {
+        path: 'accounts/:id/flow-log',
+        name: 'AccountFlowLog',
+        component: () => import('@/views/accounting/accounts/FlowLog.vue'),
+        meta: { title: 'Flow Log', showTabbar: false, showLayoutHeader: false }
+      },
+      {
         path: 'accounts/:id',
         name: 'AccountEdit',
         component: () => import('@/views/accounting/accounts/components/AccountForm.vue'),

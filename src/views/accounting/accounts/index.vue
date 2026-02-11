@@ -33,6 +33,10 @@
             </span>
             <ion-badge v-else-if="row.is_active === false" color="medium" slot="end">Inactive</ion-badge>
           </ion-item>
+          <ion-item-options side="start">
+            <ion-item-option color="warning" @click="openReconcile(row)">Reconcile</ion-item-option>
+            <ion-item-option color="tertiary" @click="goFlowLog(row)">Flow Log</ion-item-option>
+          </ion-item-options>
           <ion-item-options side="end">
             <ion-item-option color="success" @click="goAddTransaction(row)">Add Transaction</ion-item-option>
             <ion-item-option @click="goEdit(row)">Edit</ion-item-option>
@@ -43,6 +47,13 @@
       <div v-else-if="!loading" class="empty-state">
         <ion-note>No accounts</ion-note>
       </div>
+
+      <reconcile-modal
+        :visible="reconcileVisible"
+        :account="accountForReconcile"
+        @close="reconcileVisible = false"
+        @success="onReconcileSuccess"
+      />
     </ion-content>
   </ion-page>
 </template>
@@ -75,10 +86,13 @@ import {
 import { addOutline, menuOutline } from 'ionicons/icons'
 import { showToast, showConfirmDialog } from '@/utils/ionicFeedback'
 import { getAccounts, deleteAccount } from '@/api/accounting'
+import ReconcileModal from './components/ReconcileModal.vue'
 
 const router = useRouter()
 const list = ref([])
 const loading = ref(false)
+const reconcileVisible = ref(false)
+const accountForReconcile = ref(null)
 
 function formatCurrency(v, code) {
   return new Intl.NumberFormat('en-US', { style: 'currency', currency: code || 'USD', minimumFractionDigits: 2 }).format(v || 0)
@@ -95,6 +109,23 @@ function goEdit(row) {
 
 function goAddTransaction(row) {
   router.push(`/transactions/create?account_id=${row.id}`)
+}
+
+function goFlowLog(row) {
+  const name = encodeURIComponent(row.name || 'Account')
+  const cur = encodeURIComponent(row.currency || 'USD')
+  router.push(`/accounts/${row.id}/flow-log?name=${name}&currency=${cur}`)
+}
+
+function openReconcile(row) {
+  accountForReconcile.value = { ...row }
+  reconcileVisible.value = true
+}
+
+function onReconcileSuccess() {
+  reconcileVisible.value = false
+  accountForReconcile.value = null
+  load()
 }
 
 async function onDelete(row) {
