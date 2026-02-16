@@ -181,9 +181,11 @@ import {
 import { showToast } from '@/utils/ionicFeedback'
 import { createTransaction, updateTransaction, getTransactionById, getCategoryTree, getAccounts, getPrimaryAccount } from '@/api/accounting'
 import { getTenantCurrencies, getTenantDefaultCurrency } from '@/api/currency'
+import { useSyncStore } from '@/store/sync'
 
 const route = useRoute()
 const router = useRouter()
+const syncStore = useSyncStore()
 const id = route.params.id
 const isEdit = !!id
 
@@ -497,6 +499,7 @@ async function submit () {
     const res = isEdit ? await updateTransaction(id, body) : await createTransaction(body)
     if (res?.queued) {
       showToast('Saved locally. Will sync when online.')
+      syncStore.setLastQueuedTransaction({ id: res.id, payload: body })
     } else {
       showToast(isEdit ? 'Updated' : 'Created')
     }

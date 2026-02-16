@@ -7,6 +7,10 @@ export const useSyncStore = defineStore('sync', () => {
   const pendingCount = ref(0)
   /** @type {import('vue').Ref<Set<number|string>>} */
   const invalidatedAccountIds = ref(new Set())
+  /** Timestamp when a pending transaction completed; transaction list should refetch. */
+  const transactionListInvalidatedAt = ref(0)
+  /** When create transaction is queued (network error), pass to list to add one row. */
+  const lastQueuedTransaction = ref(null)
 
   async function refreshPendingCount() {
     const entries = await getPendingWrites()
@@ -31,6 +35,20 @@ export const useSyncStore = defineStore('sync', () => {
     invalidatedAccountIds.value = new Set()
   }
 
+  function setTransactionListInvalidated() {
+    transactionListInvalidatedAt.value = Date.now()
+  }
+
+  function setLastQueuedTransaction(entry) {
+    lastQueuedTransaction.value = entry
+  }
+
+  function consumeLastQueuedTransaction() {
+    const entry = lastQueuedTransaction.value
+    lastQueuedTransaction.value = null
+    return entry
+  }
+
   const hasPendingSync = computed(() => pendingCount.value > 0)
 
   async function syncNow() {
@@ -41,11 +59,15 @@ export const useSyncStore = defineStore('sync', () => {
   return {
     pendingCount,
     invalidatedAccountIds: computed(() => invalidatedAccountIds.value),
+    transactionListInvalidatedAt,
     hasPendingSync,
     refreshPendingCount,
     addInvalidatedAccountIds,
     clearInvalidatedAccountId,
     clearAllInvalidated,
+    setTransactionListInvalidated,
+    setLastQueuedTransaction,
+    consumeLastQueuedTransaction,
     syncNow
   }
 })

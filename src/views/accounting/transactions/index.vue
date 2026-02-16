@@ -57,16 +57,22 @@
       <template v-else>
         <ion-list lines="inset">
           <ion-item-sliding v-for="row in list" :key="row.id">
-            <ion-item button @click="$router.push(`/transactions/${row.id}`)">
+            <ion-item button @click="onRowClick(row)">
               <ion-label>
                 <h2>{{ row.transaction_number || '-' }}</h2>
                 <p>{{ formatDate(row.transaction_date) }} · {{ getCategoryLabel(row) }}</p>
               </ion-label>
               <span slot="end" :class="amountClass(row)">{{ row.type === 'income' ? '+' : row.type === 'transfer' ? '→' : '-' }}{{ formatCurrency(row.amount) }}</span>
+              <ion-icon v-if="row._pending" :icon="cloudOfflineOutline" slot="end" class="pending-icon" title="Not synced" />
             </ion-item>
             <ion-item-options side="end">
-              <ion-item-option color="primary" @click="$router.push(`/transactions/${row.id}`)">Edit</ion-item-option>
-              <ion-item-option color="danger" @click="onDelete(row)">Delete</ion-item-option>
+              <template v-if="row._pending">
+                <ion-item-option color="warning" @click="onRemoveFromQueue(row)">Remove from queue</ion-item-option>
+              </template>
+              <template v-else>
+                <ion-item-option color="primary" @click="$router.push(`/transactions/${row.id}`)">Edit</ion-item-option>
+                <ion-item-option color="danger" @click="onDelete(row)">Delete</ion-item-option>
+              </template>
             </ion-item-options>
           </ion-item-sliding>
         </ion-list>
@@ -86,7 +92,8 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import {
   IonPage,
   IonHeader,
@@ -116,18 +123,58 @@ import {
   IonNote,
   onIonViewDidEnter
 } from '@ionic/vue'
-import { arrowDownOutline, arrowUpOutline, swapHorizontalOutline, menuOutline } from 'ionicons/icons'
+import { arrowDownOutline, arrowUpOutline, swapHorizontalOutline, menuOutline, cloudOfflineOutline } from 'ionicons/icons'
 import { showToast, showConfirmDialog } from '@/utils/ionicFeedback'
 import { getTransactions, deleteTransaction, getSummary } from '@/api/accounting'
 import { getTenantDefaultCurrency } from '@/api/currency'
 import { refreshBootstrapCache } from '@/utils/bootstrapCache'
+import { getPendingWrites, deleteEntry } from '@/db/pendingWrites'
+import { useSyncStore } from '@/store/sync'
 
+const router = useRouter()
+const syncStore = useSyncStore()
 const list = ref([])
 const listQuery = ref({ type: '', limit: 30, offset: 0 })
 const summary = ref({ total_income: 0, total_expense: 0 })
 const defaultCurrency = ref({ code: 'USD' })
 const loading = ref(false)
 const finished = ref(false)
+
+function isTransactionEntry(entry) {
+  return entry.method === 'POST' && typeof entry.url === 'string' && entry.url.includes('transactions')
+}
+
+function pendingEntryToRow(entry) {
+  const p = entry.payload || {}
+  const dateVal = p.transaction_date || ''
+  return {
+    id: 'pending_' + entry.id,
+    _pending: true,
+    _pendingId: entry.id,
+    transaction_number: p.transaction_number || '-',
+    transaction_date: dateVal,
+    type: p.type || 'expense',
+    amount: p.amount ?? 0,
+    category_name: p.category_name || '-',
+    category: p.category_name || '-'
+  }
+}
+
+function payloadToRow(id, payload) {
+  const p = payload || {}
+  const dateVal = p.transaction_date || ''
+  return {
+    id: 'pending_' + id,
+    _pending: true,
+    _pendingId: id,
+    transaction_number: p.transaction_number || '-',
+    transaction_date: dateVal,
+    type: p.type || 'expense',
+    amount: p.amount ?? 0,
+    category_name: p.category_name || '-',
+    category: p.category_name || '-'
+  }
+}
 
 const net = computed(() => (summary.value.total_income || 0) - (summary.value.total_expense || 0))
 
@@ -145,13 +192,42 @@ function amountClass (row) {
   return row.type === 'income' ? 'income' : row.type === 'transfer' ? 'transfer' : 'expense'
 }
 
+async function loadPendingRows() {
+  const typeFilter = listQuery.value.type || ''
+  try {
+    const entries = await getPendingWrites()
+    const transactionEntries = entries.filter(isTransactionEntry)
+    const filtered = typeFilter
+      ? transactionEntries.filter((e) => (e.payload?.type || '') === typeFilter)
+      : transactionEntries
+    return filtered.map(pendingEntryToRow)
+  } catch (_) {
+    return []
+  }
+}
+
+function mergeAndSort(pendingRows, serverData) {
+  const merged = [...pendingRows, ...serverData]
+  const sortByDate = (a, b) => {
+    const da = (a.transaction_date || '').replace(' ', 'T')
+    const db = (b.transaction_date || '').replace(' ', 'T')
+    return new Date(db) - new Date(da)
+  }
+  merged.sort(sortByDate)
+  return merged
+}
+
 async function load () {
   loading.value = true
   try {
     const res = await getTransactions(listQuery.value)
     const data = res?.data || []
-    if (listQuery.value.offset === 0) list.value = data
-    else list.value.push(...data)
+    if (listQuery.value.offset === 0) {
+      const pendingRows = await loadPendingRows()
+      list.value = mergeAndSort(pendingRows, data)
+    } else {
+      list.value.push(...data)
+    }
     listQuery.value.offset += data.length
     finished.value = data.length < (listQuery.value.limit || 30)
   } catch (e) {
@@ -195,7 +271,30 @@ async function onLoad (ev) {
   ev.target.complete()
 }
 
+function onRowClick (row) {
+  if (row._pending) {
+    showToast('Syncing when online')
+    return
+  }
+  return router.push(`/transactions/${row.id}`)
+}
+
+async function onRemoveFromQueue (row) {
+  if (!row._pending || !row._pendingId) return
+  try {
+    await deleteEntry(row._pendingId)
+    showToast('Removed from queue')
+    await refreshData()
+  } catch (e) {
+    showToast(e?.message || 'Failed to remove')
+  }
+}
+
 async function onDelete (row) {
+  if (row._pending) {
+    await onRemoveFromQueue(row)
+    return
+  }
   try {
     await showConfirmDialog({ title: 'Delete', message: `Delete "${row.transaction_number}"?` })
     const res = await deleteTransaction(row.id)
@@ -208,8 +307,24 @@ async function onDelete (row) {
   }
 }
 
+watch(
+  () => syncStore.transactionListInvalidatedAt,
+  (val) => {
+    if (val > 0) refreshData()
+  }
+)
+
 onIonViewDidEnter(() => {
-  refreshData()
+  const queued = syncStore.consumeLastQueuedTransaction()
+  if (queued) {
+    const row = payloadToRow(queued.id, queued.payload)
+    const typeFilter = listQuery.value.type || ''
+    if (!typeFilter || row.type === typeFilter) {
+      list.value = mergeAndSort([row], list.value)
+    }
+  } else {
+    refreshData()
+  }
   refreshBootstrapCache().catch(() => {})
 })
 
@@ -245,4 +360,5 @@ ion-content { --background: #f7f8fa; }
 .toolbar-btn.income ion-icon { color: #07c160; }
 .toolbar-btn.expense ion-icon { color: #ee0a24; }
 .toolbar-btn.transfer ion-icon { color: #1989fa; }
+.pending-icon { margin-left: 6px; font-size: 20px; color: var(--ion-color-medium); }
 </style>

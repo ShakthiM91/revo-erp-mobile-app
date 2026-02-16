@@ -28,12 +28,6 @@
       <div v-else-if="!loading" class="menu-empty">
         <ion-note>No menu items</ion-note>
       </div>
-      <div v-if="hasPendingSync" class="menu-pending">
-        <ion-item button :detail="true" @click="navigate('/pending-sync')">
-          <ion-icon :icon="syncOutline" slot="start" />
-          <ion-label>Pending sync ({{ pendingCount }})</ion-label>
-        </ion-item>
-      </div>
     </ion-content>
   </div>
 </template>
@@ -52,18 +46,13 @@ import {
   IonAccordionGroup
 } from '@ionic/vue'
 import { useUserStore } from '@/store/user'
-import { useSyncStore } from '@/store/sync'
 import { getTenant } from '@/api/tenant'
 import { filterAndMapMenuTree } from '@/utils/menuRoutes'
 import { getMenuIcon } from '@/utils/menuIcons'
-import { syncOutline } from 'ionicons/icons'
 import MenuItem from './MenuItem.vue'
 
 const router = useRouter()
 const userStore = useUserStore()
-const syncStore = useSyncStore()
-const hasPendingSync = computed(() => syncStore.hasPendingSync)
-const pendingCount = computed(() => syncStore.pendingCount)
 const loading = ref(false)
 const appName = ref('')
 const logoUrl = ref(null)
@@ -158,13 +147,6 @@ onMounted(() => {
 .menu-list-content ion-icon {
   color: #e4e7ed;
   opacity: 0.95;
-}
-.menu-pending {
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
-}
-.menu-pending ion-item {
-  --background: rgba(255, 193, 7, 0.15);
-  --color: #ffc107;
 }
 .menu-empty {
   padding: 24px 16px;

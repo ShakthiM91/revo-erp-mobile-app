@@ -4,7 +4,7 @@ import { IonicVue } from '@ionic/vue'
 import '@ionic/vue/css/core.css'
 import router from './router'
 import { setRouter } from '@/utils/request'
-import { setTransactionInvalidationHandler, runSync } from '@/utils/syncWorker'
+import { setTransactionInvalidationHandler, setTransactionListInvalidationHandler, runSync } from '@/utils/syncWorker'
 import { useSyncStore } from '@/store/sync'
 import { getToken } from '@/utils/auth'
 import { warmBootstrapCache, refreshBootstrapCache } from '@/utils/bootstrapCache'
@@ -25,12 +25,23 @@ if (getToken()) {
   warmBootstrapCache().catch(() => {})
 }
 
-// Register sync: when a transaction syncs, invalidate affected account balance/flow log
+// Register sync: when a transaction syncs, invalidate affected account balance/flow log and transaction list
 const syncStore = useSyncStore()
 setTransactionInvalidationHandler((accountIds) => {
   syncStore.addInvalidatedAccountIds(accountIds)
 })
+setTransactionListInvalidationHandler(() => {
+  syncStore.setTransactionListInvalidated()
+})
 syncStore.refreshPendingCount()
+
+// Periodic sync while app is running (when online and authenticated)
+const SYNC_INTERVAL_MS = 45000
+setInterval(() => {
+  if (typeof navigator !== 'undefined' && !navigator.onLine) return
+  if (!getToken()) return
+  runSync().then(() => syncStore.refreshPendingCount())
+}, SYNC_INTERVAL_MS)
 
 // On app resume: run write sync and refresh read cache when online
 async function initAppResumeSync() {
