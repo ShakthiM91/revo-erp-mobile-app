@@ -126,8 +126,9 @@ async function submit () {
   if (!isEdit && !validEmail(form.email)) { showToast('Invalid email'); return }
   saving.value = true
   try {
+    let res
     if (isEdit) {
-      await updateMember(id, {
+      res = await updateMember(id, {
         name: form.name,
         phone: form.phone || null,
         department: form.department || null,
@@ -143,7 +144,7 @@ async function submit () {
         status: form.status
       })
       if (!userRes?.success || !userRes?.data?.id) throw new Error('Failed to create user')
-      await createMember({
+      res = await createMember({
         user_id: userRes.data.id,
         name: form.name,
         phone: form.phone || null,
@@ -152,7 +153,7 @@ async function submit () {
         status: form.status
       })
     }
-    showToast(isEdit ? 'Updated' : 'Created')
+    showToast(res?.queued ? 'Saved locally. Will sync when online.' : (isEdit ? 'Updated' : 'Created'))
     router.back()
   } catch (e) { showToast(e?.message || 'Failed') } finally { saving.value = false }
 }

@@ -86,9 +86,12 @@ import {
 import { addOutline, menuOutline } from 'ionicons/icons'
 import { showToast, showConfirmDialog } from '@/utils/ionicFeedback'
 import { getAccounts, deleteAccount } from '@/api/accounting'
+import { useSyncStore } from '@/store/sync'
+import { refreshBootstrapCache } from '@/utils/bootstrapCache'
 import ReconcileModal from './components/ReconcileModal.vue'
 
 const router = useRouter()
+const syncStore = useSyncStore()
 const list = ref([])
 const loading = ref(false)
 const reconcileVisible = ref(false)
@@ -131,8 +134,8 @@ function onReconcileSuccess() {
 async function onDelete(row) {
   try {
     await showConfirmDialog({ title: 'Delete', message: `Delete "${row.name}"?` })
-    await deleteAccount(row.id)
-    showToast('Deleted')
+    const res = await deleteAccount(row.id)
+    showToast(res?.queued ? 'Saved locally. Will sync when online.' : 'Deleted')
     load()
   } catch (e) {
     if (e !== 'cancel') showToast(e?.message || 'Delete failed')
@@ -159,7 +162,11 @@ async function onRefresh(ev) {
 }
 
 onMounted(() => load())
-onIonViewDidEnter(() => load())
+onIonViewDidEnter(async () => {
+  if (syncStore.invalidatedAccountIds?.size > 0) syncStore.clearAllInvalidated()
+  await load()
+  refreshBootstrapCache().catch(() => {})
+})
 </script>
 
 <style scoped>

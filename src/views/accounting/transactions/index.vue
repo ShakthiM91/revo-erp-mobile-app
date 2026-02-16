@@ -120,6 +120,7 @@ import { arrowDownOutline, arrowUpOutline, swapHorizontalOutline, menuOutline } 
 import { showToast, showConfirmDialog } from '@/utils/ionicFeedback'
 import { getTransactions, deleteTransaction, getSummary } from '@/api/accounting'
 import { getTenantDefaultCurrency } from '@/api/currency'
+import { refreshBootstrapCache } from '@/utils/bootstrapCache'
 
 const list = ref([])
 const listQuery = ref({ type: '', limit: 30, offset: 0 })
@@ -197,8 +198,8 @@ async function onLoad (ev) {
 async function onDelete (row) {
   try {
     await showConfirmDialog({ title: 'Delete', message: `Delete "${row.transaction_number}"?` })
-    await deleteTransaction(row.id)
-    showToast('Deleted')
+    const res = await deleteTransaction(row.id)
+    showToast(res?.queued ? 'Saved locally. Will sync when online.' : 'Deleted')
     listQuery.value.offset = 0
     finished.value = false
     await Promise.all([load(), fetchSummary()])
@@ -209,6 +210,7 @@ async function onDelete (row) {
 
 onIonViewDidEnter(() => {
   refreshData()
+  refreshBootstrapCache().catch(() => {})
 })
 
 onMounted(async () => {

@@ -150,8 +150,8 @@ function onAssignPermissionsSuccess() {
 async function onDelete(row) {
   try {
     await showConfirmDialog({ title: 'Delete Role', message: `Delete "${row.name}"?` })
-    await deleteRole(row.id)
-    showToast('Deleted')
+    const res = await deleteRole(row.id)
+    showToast(res?.queued ? 'Saved locally. Will sync when online.' : 'Deleted')
     load()
   } catch (e) {
     if (e !== 'cancel') showToast(e?.message || 'Delete failed')

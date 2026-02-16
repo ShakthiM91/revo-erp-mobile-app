@@ -212,6 +212,12 @@ const routes = [
         meta: { title: 'Settings', showTabbar: true, showLayoutHeader: false }
       },
       {
+        path: 'pending-sync',
+        name: 'PendingSync',
+        component: () => import('@/views/sync/PendingSync.vue'),
+        meta: { title: 'Pending Sync', showTabbar: false }
+      },
+      {
         path: 'work',
         name: 'Work',
         component: () => import('@/views/work/index.vue'),

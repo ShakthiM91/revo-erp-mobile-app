@@ -141,8 +141,8 @@ async function onDelete(cat) {
   }
   try {
     await showConfirmDialog({ title: 'Delete', message: `Delete "${cat.name}"?` })
-    await deleteCategory(cat.id)
-    showToast('Deleted')
+    const res = await deleteCategory(cat.id)
+    showToast(res?.queued ? 'Saved locally. Will sync when online.' : 'Deleted')
     load()
   } catch (e) {
     if (e !== 'cancel') showToast(e?.message || 'Delete failed')

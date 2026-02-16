@@ -1,6 +1,9 @@
 import axios from 'axios'
 import { showToast } from '@/utils/ionicFeedback'
 import { getToken } from './auth'
+import { enqueue } from '@/db/pendingWrites'
+import { runSync } from '@/utils/syncWorker'
+import { useSyncStore } from '@/store/sync'
 
 let _router = null
 
@@ -66,4 +69,33 @@ service.interceptors.response.use(
   }
 )
 
-export default service
+function shouldEnqueue(err) {
+  if (!err.response) return true
+  return err.response.status >= 500
+}
+
+async function enqueueAndReturnQueued(config) {
+  const method = (config.method || 'get').toUpperCase()
+  const { id } = await enqueue(method, config.url, config.data ?? null)
+  runSync().then(() => useSyncStore().refreshPendingCount())
+  return { queued: true, id }
+}
+
+/**
+ * Request with optional queue: when offline or 5xx/network error, enqueue and return { queued: true, id }.
+ * Use config.skipQueue: true to never queue (e.g. auth).
+ */
+function request(config) {
+  if (config.skipQueue || (config.method && String(config.method).toLowerCase() === 'get')) {
+    return service(config)
+  }
+  if (typeof navigator !== 'undefined' && !navigator.onLine) {
+    return enqueueAndReturnQueued(config)
+  }
+  return service(config).catch((err) => {
+    if (shouldEnqueue(err)) return enqueueAndReturnQueued(config)
+    return Promise.reject(err)
+  })
+}
+
+export default request

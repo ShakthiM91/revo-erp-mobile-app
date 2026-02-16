@@ -81,7 +81,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import {
   IonPage,
@@ -106,8 +106,10 @@ import {
 } from '@ionic/vue'
 import { showToast } from '@/utils/ionicFeedback'
 import { getAccountFlowLog, getAccountFlowSummary } from '@/api/accounting'
+import { useSyncStore } from '@/store/sync'
 
 const route = useRoute()
+const syncStore = useSyncStore()
 const accountId = computed(() => route.params.id)
 
 const accountName = ref('')
@@ -215,11 +217,22 @@ function onFlowTypeChange(e) {
   fetchFlowLog(1)
 }
 
+async function refetchIfInvalidated() {
+  const id = Number(accountId.value)
+  if (id && syncStore.invalidatedAccountIds?.has(id)) {
+    await load()
+    syncStore.clearInvalidatedAccountId(id)
+  }
+}
+
 onMounted(async () => {
   accountName.value = route.query.name || 'Account'
   currency.value = route.query.currency || 'USD'
   await load()
+  await refetchIfInvalidated()
 })
+
+watch(accountId, () => refetchIfInvalidated())
 </script>
 
 <style scoped>

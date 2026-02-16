@@ -207,12 +207,8 @@ async function submit() {
       expected_completion_date: form.expected_completion_date || null,
       status: form.status
     }
-    if (id) {
-      await updateProject(id, data)
-    } else {
-      await createProject(data)
-    }
-    showToast(id ? 'Updated' : 'Created')
+    const res = id ? await updateProject(id, data) : await createProject(data)
+    showToast(res?.queued ? 'Saved locally. Will sync when online.' : (id ? 'Updated' : 'Created'))
     router.back()
   } catch (e) {
     showToast(e?.message || 'Failed')

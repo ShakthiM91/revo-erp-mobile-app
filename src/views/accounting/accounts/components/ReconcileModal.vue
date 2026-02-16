@@ -257,7 +257,7 @@ async function handleSubmit() {
       ? `Reconciliation: ${remark.value.trim()}`
       : 'Balance reconciliation'
 
-    await createTransaction({
+    const res = await createTransaction({
       transaction_number: `RECON-${Date.now()}`,
       type,
       account_id: props.account.id,
@@ -269,7 +269,7 @@ async function handleSubmit() {
       status: 'completed'
     })
 
-    showToast('Balance reconciled')
+    showToast(res?.queued ? 'Saved locally. Will sync when online.' : 'Balance reconciled')
     emit('success')
     handleClose()
   } catch (e) {

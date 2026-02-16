@@ -254,12 +254,8 @@ async function submit() {
       is_active: form.is_active
     }
     if (!id) data.initial_balance = form.initial_balance ?? 0
-    if (id) {
-      await updateAccount(id, data)
-    } else {
-      await createAccount(data)
-    }
-    showToast(id ? 'Updated' : 'Created')
+    const res = id ? await updateAccount(id, data) : await createAccount(data)
+    showToast(res?.queued ? 'Saved locally. Will sync when online.' : (id ? 'Updated' : 'Created'))
     router.back()
   } catch (e) {
     showToast(e?.message || 'Failed')

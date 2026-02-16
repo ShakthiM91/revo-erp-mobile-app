@@ -105,13 +105,8 @@ async function submit() {
       description: form.description?.trim() || null,
       is_active: form.is_active
     }
-    if (isEdit.value) {
-      await updateVendorCategory(id.value, data)
-      showToast('Updated')
-    } else {
-      await createVendorCategory(data)
-      showToast('Created')
-    }
+    const res = isEdit.value ? await updateVendorCategory(id.value, data) : await createVendorCategory(data)
+    showToast(res?.queued ? 'Saved locally. Will sync when online.' : (isEdit.value ? 'Updated' : 'Created'))
     router.push('/work/categories')
   } catch (e) {
     showToast(e?.message || 'Failed')

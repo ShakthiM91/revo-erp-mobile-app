@@ -1,4 +1,6 @@
 import request from '@/utils/request'
+import { CACHE_KEYS } from '@/db/readCache'
+import { getWithCache } from '@/utils/cacheFirst'
 
 export function getTransactions(params) {
   return request({
@@ -19,11 +21,14 @@ export function getCategories(type = null) {
 
 export function getCategoryTree(type = null) {
   const params = type ? { type } : {}
-  return request({
-    url: '/api/accounting/categories/tree',
-    method: 'get',
-    params
-  })
+  const cacheKey = CACHE_KEYS.CATEGORY_TREE(type)
+  return getWithCache(cacheKey, () =>
+    request({
+      url: '/api/accounting/categories/tree',
+      method: 'get',
+      params
+    })
+  )
 }
 
 export function getDefaultCategories(type = null) {
@@ -128,11 +133,15 @@ export function getCategoryBreakdown(params) {
 
 // Accounts API
 export function getAccounts(filters = {}) {
-  return request({
-    url: '/api/accounting/accounts',
-    method: 'get',
-    params: filters
-  })
+  const cacheKey =
+    filters && filters.is_active === true ? CACHE_KEYS.ACCOUNTS_ACTIVE : CACHE_KEYS.ACCOUNTS
+  return getWithCache(cacheKey, () =>
+    request({
+      url: '/api/accounting/accounts',
+      method: 'get',
+      params: filters
+    })
+  )
 }
 
 export function getAccountById(id) {
@@ -228,10 +237,12 @@ export function getAccountFlowSummary(accountId, params = {}) {
 }
 
 export function getPrimaryAccount() {
-  return request({
-    url: '/api/accounting/primary-account',
-    method: 'get'
-  })
+  return getWithCache(CACHE_KEYS.PRIMARY_ACCOUNT, () =>
+    request({
+      url: '/api/accounting/primary-account',
+      method: 'get'
+    })
+  )
 }
 
 export function setPrimaryAccount(accountId) {

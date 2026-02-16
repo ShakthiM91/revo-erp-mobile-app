@@ -181,12 +181,8 @@ async function submit() {
       notes: form.notes?.trim() || null,
       is_active: form.is_active
     }
-    if (id) {
-      await updateVendor(id, data)
-    } else {
-      await createVendor(data)
-    }
-    showToast(id ? 'Updated' : 'Created')
+    const res = id ? await updateVendor(id, data) : await createVendor(data)
+    showToast(res?.queued ? 'Saved locally. Will sync when online.' : (id ? 'Updated' : 'Created'))
     router.back()
   } catch (e) {
     showToast(e?.message || 'Failed')

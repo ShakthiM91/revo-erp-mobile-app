@@ -126,8 +126,8 @@ async function onLoad (ev) {
 async function onDelete (row) {
   try {
     await showConfirmDialog({ title: 'Delete', message: `Delete "${row.title}"?` })
-    await deleteEvent(row.id)
-    showToast('Deleted')
+    const res = await deleteEvent(row.id)
+    showToast(res?.queued ? 'Saved locally. Will sync when online.' : 'Deleted')
     listQuery.value.offset = 0
     finished.value = false
     await load()

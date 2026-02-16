@@ -205,9 +205,8 @@ async function submit () {
       location: form.location || null,
       status: form.status
     }
-    if (isEdit) await updateAsset(id, body)
-    else await createAsset(body)
-    showToast(isEdit ? 'Updated' : 'Created')
+    const res = isEdit ? await updateAsset(id, body) : await createAsset(body)
+    showToast(res?.queued ? 'Saved locally. Will sync when online.' : (isEdit ? 'Updated' : 'Created'))
     router.back()
   } catch (e) { showToast(e?.message || 'Failed') } finally { saving.value = false }
 }

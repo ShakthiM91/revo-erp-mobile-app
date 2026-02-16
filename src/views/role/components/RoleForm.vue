@@ -130,11 +130,8 @@ async function submit() {
       description: form.description?.trim() || null,
       status: form.status
     }
-    if (props.role) {
-      await updateRole(props.role.id, data)
-    } else {
-      await createRole(data)
-    }
+    const res = props.role ? await updateRole(props.role.id, data) : await createRole(data)
+    if (res?.queued) showToast('Saved locally. Will sync when online.')
     emit('success')
   } catch (e) {
     showToast(e?.message || 'Failed')

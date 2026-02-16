@@ -188,9 +188,8 @@ async function submit () {
       location: form.location || null,
       status: form.status
     }
-    if (isEdit) await updateEvent(id, body)
-    else await createEvent(body)
-    showToast(isEdit ? 'Updated' : 'Created')
+    const res = isEdit ? await updateEvent(id, body) : await createEvent(body)
+    showToast(res?.queued ? 'Saved locally. Will sync when online.' : (isEdit ? 'Updated' : 'Created'))
     router.back()
   } catch (e) { showToast(e?.message || 'Failed') } finally { saving.value = false }
 }

@@ -494,9 +494,12 @@ async function submit () {
       transaction_date: normalizeTransactionDateTime(form.transaction_date),
       status: form.status
     }
-    if (isEdit) await updateTransaction(id, body)
-    else await createTransaction(body)
-    showToast(isEdit ? 'Updated' : 'Created')
+    const res = isEdit ? await updateTransaction(id, body) : await createTransaction(body)
+    if (res?.queued) {
+      showToast('Saved locally. Will sync when online.')
+    } else {
+      showToast(isEdit ? 'Updated' : 'Created')
+    }
     router.back()
   } catch (e) {
     showToast(e?.message || 'Failed')
