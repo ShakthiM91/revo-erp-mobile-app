@@ -3,11 +3,45 @@ import { useUserStore } from '@/store/user'
 import { getToken } from '@/utils/auth'
 import TabLayout from '@/layouts/TabLayout.vue'
 
+import Login from '@/views/login/index.vue'
+import Dashboard from '@/views/dashboard/index.vue'
+import TransactionList from '@/views/accounting/transactions/index.vue'
+import TransactionForm from '@/views/accounting/transactions/components/TransactionForm.vue'
+import AccountsIndex from '@/views/accounting/accounts/index.vue'
+import AccountForm from '@/views/accounting/accounts/components/AccountForm.vue'
+import FlowLog from '@/views/accounting/accounts/FlowLog.vue'
+import ReportsIndex from '@/views/accounting/reports/index.vue'
+import AccountingCategories from '@/views/accounting/categories/index.vue'
+import AssetIndex from '@/views/asset/index.vue'
+import AssetForm from '@/views/asset/components/AssetForm.vue'
+import AssignAsset from '@/views/asset/components/AssignAsset.vue'
+import AssetHistory from '@/views/asset/components/AssetHistory.vue'
+import AssetCategories from '@/views/asset/categories/index.vue'
+import ScheduleIndex from '@/views/schedule/index.vue'
+import ScheduleEventsIndex from '@/views/schedule/events/index.vue'
+import EventForm from '@/views/schedule/events/components/EventForm.vue'
+import MemberIndex from '@/views/member/index.vue'
+import RoleIndex from '@/views/role/index.vue'
+import MemberForm from '@/views/member/components/MemberForm.vue'
+import AssignRole from '@/views/member/components/AssignRole.vue'
+import Me from '@/views/me/index.vue'
+import Profile from '@/views/profile/index.vue'
+import Settings from '@/views/settings/index.vue'
+import WorkIndex from '@/views/work/index.vue'
+import WorkDashboard from '@/views/work/dashboard/index.vue'
+import WorkProjectsIndex from '@/views/work/projects/index.vue'
+import ProjectForm from '@/views/work/projects/components/ProjectForm.vue'
+import WorkProjectDetail from '@/views/work/projects/detail.vue'
+import WorkVendorsIndex from '@/views/work/vendors/index.vue'
+import VendorForm from '@/views/work/vendors/components/VendorForm.vue'
+import WorkCategoriesIndex from '@/views/work/categories/index.vue'
+import WorkCategoryForm from '@/views/work/categories/components/CategoryForm.vue'
+
 const routes = [
   {
     path: '/login',
     name: 'Login',
-    component: () => import('@/views/login/index.vue'),
+    component: Login,
     meta: { showTabbar: false, public: true }
   },
   {
@@ -18,49 +52,49 @@ const routes = [
       {
         path: 'dashboard',
         name: 'Dashboard',
-        component: () => import('@/views/dashboard/index.vue'),
+        component: Dashboard,
         meta: { title: 'Home', showTabbar: true, showLayoutHeader: false }
       },
       {
         path: 'transactions',
         name: 'Transactions',
-        component: () => import('@/views/accounting/transactions/index.vue'),
+        component: TransactionList,
         meta: { title: 'Finance', showTabbar: true, showLayoutHeader: false }
       },
       {
         path: 'transactions/create',
         name: 'TransactionCreate',
-        component: () => import('@/views/accounting/transactions/components/TransactionForm.vue'),
+        component: TransactionForm,
         meta: { title: 'Add Transaction', showTabbar: false, showLayoutHeader: false }
       },
       {
         path: 'transactions/:id',
         name: 'TransactionEdit',
-        component: () => import('@/views/accounting/transactions/components/TransactionForm.vue'),
+        component: TransactionForm,
         meta: { title: 'Edit Transaction', showTabbar: false, showLayoutHeader: false }
       },
       {
         path: 'accounts',
         name: 'Accounts',
-        component: () => import('@/views/accounting/accounts/index.vue'),
+        component: AccountsIndex,
         meta: { title: 'Accounts', showTabbar: true, showLayoutHeader:false }
       },
       {
         path: 'accounts/create',
         name: 'AccountCreate',
-        component: () => import('@/views/accounting/accounts/components/AccountForm.vue'),
+        component: AccountForm,
         meta: { title: 'Add Account', showTabbar: false, showLayoutHeader: false }
       },
       {
         path: 'accounts/:id/flow-log',
         name: 'AccountFlowLog',
-        component: () => import('@/views/accounting/accounts/FlowLog.vue'),
+        component: FlowLog,
         meta: { title: 'Flow Log', showTabbar: false, showLayoutHeader: false }
       },
       {
         path: 'accounts/:id',
         name: 'AccountEdit',
-        component: () => import('@/views/accounting/accounts/components/AccountForm.vue'),
+        component: AccountForm,
         meta: { title: 'Edit Account', showTabbar: false, showLayoutHeader: false }
       },
       {
@@ -70,217 +104,217 @@ const routes = [
       {
         path: 'reports/income-expense',
         name: 'ReportsIncomeExpense',
-        component: () => import('@/views/accounting/reports/index.vue'),
+        component: ReportsIndex,
         meta: { title: 'Income vs Expense', showTabbar: true, showLayoutHeader: false }
       },
       {
         path: 'reports/daily-trends',
         name: 'ReportsDailyTrends',
-        component: () => import('@/views/accounting/reports/index.vue'),
+        component: ReportsIndex,
         meta: { title: 'Daily Trends', showTabbar: true, showLayoutHeader: false }
       },
       {
         path: 'reports/balance-growth',
         name: 'ReportsBalanceGrowth',
-        component: () => import('@/views/accounting/reports/index.vue'),
+        component: ReportsIndex,
         meta: { title: 'Balance Growth', showTabbar: true, showLayoutHeader: false }
       },
       {
         path: 'reports/income-by-category',
         name: 'ReportsIncomeByCategory',
-        component: () => import('@/views/accounting/reports/index.vue'),
+        component: ReportsIndex,
         meta: { title: 'Income by Category', showTabbar: true, showLayoutHeader: false }
       },
       {
         path: 'reports/expense-by-category',
         name: 'ReportsExpenseByCategory',
-        component: () => import('@/views/accounting/reports/index.vue'),
+        component: ReportsIndex,
         meta: { title: 'Expense by Category', showTabbar: true, showLayoutHeader: false }
       },
       {
         path: 'accounting/categories',
         name: 'AccountingCategories',
-        component: () => import('@/views/accounting/categories/index.vue'),
+        component: AccountingCategories,
         meta: { title: 'Categories', showTabbar: true, backHref: '/transactions', showLayoutHeader: false }
       },
       {
         path: 'assets',
         name: 'Assets',
-        component: () => import('@/views/asset/index.vue'),
+        component: AssetIndex,
         meta: { title: 'Assets', showTabbar: true, showLayoutHeader: false }
       },
       {
         path: 'assets/create',
         name: 'AssetCreate',
-        component: () => import('@/views/asset/components/AssetForm.vue'),
+        component: AssetForm,
         meta: { title: 'Add Asset', showTabbar: false, showLayoutHeader: false }
       },
       {
         path: 'assets/:id',
         name: 'AssetEdit',
-        component: () => import('@/views/asset/components/AssetForm.vue'),
+        component: AssetForm,
         meta: { title: 'Edit Asset', showTabbar: false, showLayoutHeader: false }
       },
       {
         path: 'assets/:id/assign',
         name: 'AssetAssign',
-        component: () => import('@/views/asset/components/AssignAsset.vue'),
+        component: AssignAsset,
         meta: { title: 'Assign Asset', showTabbar: false, showLayoutHeader: false }
       },
       {
         path: 'assets/:id/history',
         name: 'AssetHistory',
-        component: () => import('@/views/asset/components/AssetHistory.vue'),
+        component: AssetHistory,
         meta: { title: 'Asset History', showTabbar: false, showLayoutHeader: false }
       },
       {
         path: 'assets/categories',
         name: 'AssetCategories',
-        component: () => import('@/views/asset/categories/index.vue'),
+        component: AssetCategories,
         meta: { title: 'Asset Categories', showTabbar: true, backHref: '/assets', showLayoutHeader: false }
       },
       {
         path: 'schedule',
         name: 'Schedule',
-        component: () => import('@/views/schedule/index.vue'),
+        component: ScheduleIndex,
         meta: { title: 'Schedule', showTabbar: true, showLayoutHeader: false }
       },
       {
         path: 'schedule/events',
         name: 'ScheduleEvents',
-        component: () => import('@/views/schedule/events/index.vue'),
+        component: ScheduleEventsIndex,
         meta: { title: 'Events', showTabbar: true, backHref: '/schedule', headerEnd: { to: '/schedule/events/create', icon: 'add' } }
       },
       {
         path: 'schedule/events/create',
         name: 'EventCreate',
-        component: () => import('@/views/schedule/events/components/EventForm.vue'),
+        component: EventForm,
         meta: { title: 'Add Event', showTabbar: false, showLayoutHeader: false }
       },
       {
         path: 'schedule/events/:id',
         name: 'EventEdit',
-        component: () => import('@/views/schedule/events/components/EventForm.vue'),
+        component: EventForm,
         meta: { title: 'Edit Event', showTabbar: false, showLayoutHeader: false }
       },
       {
         path: 'members',
         name: 'Members',
-        component: () => import('@/views/member/index.vue'),
+        component: MemberIndex,
         meta: { title: 'Members', showTabbar: true, showLayoutHeader: false }
       },
       {
         path: 'members/roles',
         name: 'MemberRoles',
-        component: () => import('@/views/role/index.vue'),
+        component: RoleIndex,
         meta: { title: 'Member Roles', showTabbar: true, showLayoutHeader: false }
       },
       {
         path: 'members/create',
         name: 'MemberCreate',
-        component: () => import('@/views/member/components/MemberForm.vue'),
+        component: MemberForm,
         meta: { title: 'Add Member', showTabbar: false, backHref: '/members', showLayoutHeader: false }
       },
       {
         path: 'members/:id/assign-role',
         name: 'MemberAssignRole',
-        component: () => import('@/views/member/components/AssignRole.vue'),
+        component: AssignRole,
         meta: { title: 'Assign Role', showTabbar: false, showLayoutHeader: false }
       },
       {
         path: 'members/:id',
         name: 'MemberEdit',
-        component: () => import('@/views/member/components/MemberForm.vue'),
+        component: MemberForm,
         meta: { title: 'Edit Member', showTabbar: false, backHref: '/members', showLayoutHeader: false }
       },
       {
         path: 'me',
         name: 'Me',
-        component: () => import('@/views/me/index.vue'),
+        component: Me,
         meta: { title: 'Me', showTabbar: true, showLayoutHeader: false }
       },
       {
         path: 'profile',
         name: 'Profile',
-        component: () => import('@/views/profile/index.vue'),
+        component: Profile,
         meta: { title: 'Profile', showTabbar: true, showLayoutHeader: false }
       },
       {
         path: 'settings',
         name: 'Settings',
-        component: () => import('@/views/settings/index.vue'),
+        component: Settings,
         meta: { title: 'Settings', showTabbar: true, showLayoutHeader: false }
       },
       {
         path: 'work',
         name: 'Work',
-        component: () => import('@/views/work/index.vue'),
+        component: WorkIndex,
         meta: { title: 'Work', showTabbar: true, showLayoutHeader: false }
       },
       {
         path: 'work/dashboard',
         name: 'WorkDashboard',
-        component: () => import('@/views/work/dashboard/index.vue'),
+        component: WorkDashboard,
         meta: { title: 'Work Dashboard', showTabbar: true, backHref: '/work', showLayoutHeader: false }
       },
       {
         path: 'work/projects',
         name: 'WorkProjects',
-        component: () => import('@/views/work/projects/index.vue'),
+        component: WorkProjectsIndex,
         meta: { title: 'Projects', showTabbar: true, showLayoutHeader: false }
       },
       {
         path: 'work/projects/create',
         name: 'WorkProjectCreate',
-        component: () => import('@/views/work/projects/components/ProjectForm.vue'),
+        component: ProjectForm,
         meta: { title: 'Add Project', showTabbar: false }
       },
       {
         path: 'work/projects/:id',
         name: 'WorkProjectDetail',
-        component: () => import('@/views/work/projects/detail.vue'),
+        component: WorkProjectDetail,
         meta: { title: 'Project', showTabbar: false, showLayoutHeader: false }
       },
       {
         path: 'work/projects/:id/edit',
         name: 'WorkProjectEdit',
-        component: () => import('@/views/work/projects/components/ProjectForm.vue'),
+        component: ProjectForm,
         meta: { title: 'Edit Project', showTabbar: false }
       },
       {
         path: 'work/vendors',
         name: 'WorkVendors',
-        component: () => import('@/views/work/vendors/index.vue'),
+        component: WorkVendorsIndex,
         meta: { title: 'Vendors', showTabbar: true, showLayoutHeader: false }
       },
       {
         path: 'work/vendors/create',
         name: 'WorkVendorCreate',
-        component: () => import('@/views/work/vendors/components/VendorForm.vue'),
+        component: VendorForm,
         meta: { title: 'Add Vendor', showTabbar: false, showLayoutHeader: false }
       },
       {
         path: 'work/vendors/:id',
         name: 'WorkVendorEdit',
-        component: () => import('@/views/work/vendors/components/VendorForm.vue'),
+        component: VendorForm,
         meta: { title: 'Edit Vendor', showTabbar: false, showLayoutHeader: false }
       },
       {
         path: 'work/categories',
         name: 'WorkCategories',
-        component: () => import('@/views/work/categories/index.vue'),
+        component: WorkCategoriesIndex,
         meta: { title: 'Vendor Categories', showTabbar: true, showLayoutHeader: false }
       },
       {
         path: 'work/categories/create',
         name: 'WorkCategoryCreate',
-        component: () => import('@/views/work/categories/components/CategoryForm.vue'),
+        component: WorkCategoryForm,
         meta: { title: 'Add Category', showTabbar: false, showLayoutHeader: false }
       },
       {
         path: 'work/categories/:id',
         name: 'WorkCategoryEdit',
-        component: () => import('@/views/work/categories/components/CategoryForm.vue'),
+        component: WorkCategoryForm,
         meta: { title: 'Edit Category', showTabbar: false, showLayoutHeader: false }
       }
     ]
