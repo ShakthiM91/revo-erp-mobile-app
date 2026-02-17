@@ -99,28 +99,46 @@
         </ion-list>
       </form>
 
-      <ion-modal :is-open="showAccountPicker" @didDismiss="showAccountPicker = false">
+      <ion-modal :is-open="showAccountPicker" @didDismiss="onAccountPickerDismiss">
         <ion-header><ion-toolbar><ion-title>{{ form.type === 'transfer' ? 'From Account' : 'Account' }}</ion-title><ion-buttons slot="end"><ion-button @click="showAccountPicker = false">Cancel</ion-button></ion-buttons></ion-toolbar></ion-header>
         <ion-content>
+          <ion-searchbar
+            v-model="accountSearchQuery"
+            placeholder="Search accounts..."
+            debounce="150"
+          />
           <ion-list>
-            <ion-item v-for="a in accountCols" :key="a.value" button @click="selectAccount(a.value)"><ion-label>{{ a.text }}</ion-label></ion-item>
+            <ion-item v-for="a in filteredAccountCols" :key="a.value" button @click="selectAccount(a.value)"><ion-label>{{ a.text }}</ion-label></ion-item>
+            <ion-item v-if="filteredAccountCols.length === 0"><ion-label color="medium">No accounts match</ion-label></ion-item>
           </ion-list>
         </ion-content>
       </ion-modal>
-      <ion-modal :is-open="showToAccountPicker" @didDismiss="showToAccountPicker = false">
+      <ion-modal :is-open="showToAccountPicker" @didDismiss="onToAccountPickerDismiss">
         <ion-header><ion-toolbar><ion-title>To Account</ion-title><ion-buttons slot="end"><ion-button @click="showToAccountPicker = false">Cancel</ion-button></ion-buttons></ion-toolbar></ion-header>
         <ion-content>
+          <ion-searchbar
+            v-model="toAccountSearchQuery"
+            placeholder="Search accounts..."
+            debounce="150"
+          />
           <ion-list>
-            <ion-item v-for="a in toAccountCols" :key="a.value" button @click="selectToAccount(a.value)"><ion-label>{{ a.text }}</ion-label></ion-item>
+            <ion-item v-for="a in filteredToAccountCols" :key="a.value" button @click="selectToAccount(a.value)"><ion-label>{{ a.text }}</ion-label></ion-item>
+            <ion-item v-if="filteredToAccountCols.length === 0"><ion-label color="medium">No accounts match</ion-label></ion-item>
           </ion-list>
         </ion-content>
       </ion-modal>
       <!-- category picker -->
-      <ion-modal :is-open="showCategoryPicker" @didDismiss="showCategoryPicker = false">
+      <ion-modal :is-open="showCategoryPicker" @didDismiss="onCategoryPickerDismiss">
         <ion-header><ion-toolbar><ion-title>Category</ion-title><ion-buttons slot="end"><ion-button @click="showCategoryPicker = false">Cancel</ion-button></ion-buttons></ion-toolbar></ion-header>
         <ion-content>
+          <ion-searchbar
+            v-model="categorySearchQuery"
+            placeholder="Search categories..."
+            debounce="150"
+          />
           <ion-list>
-            <ion-item v-for="c in categoryCols" :key="c.value" button @click="form.category_id = c.value; showCategoryPicker = false"><ion-label>{{ c.text }}</ion-label></ion-item>
+            <ion-item v-for="c in filteredCategoryCols" :key="c.value" button @click="form.category_id = c.value; showCategoryPicker = false"><ion-label>{{ c.text }}</ion-label></ion-item>
+            <ion-item v-if="filteredCategoryCols.length === 0"><ion-label color="medium">No categories match</ion-label></ion-item>
           </ion-list>
         </ion-content>
       </ion-modal>
@@ -176,7 +194,8 @@ import {
   IonSegment,
   IonSegmentButton,
   IonModal,
-  IonDatetime
+  IonDatetime,
+  IonSearchbar
 } from '@ionic/vue'
 import { showToast } from '@/utils/ionicFeedback'
 import { createTransaction, updateTransaction, getTransactionById, getCategoryTree, getAccounts, getPrimaryAccount } from '@/api/accounting'
@@ -232,6 +251,10 @@ const currencyOptions = ref([{ value: 'USD', text: 'USD' }])
 const saving = ref(false)
 const creditWarning = ref(null)
 
+const accountSearchQuery = ref('')
+const toAccountSearchQuery = ref('')
+const categorySearchQuery = ref('')
+
 const showAccountPicker = ref(false)
 const showToAccountPicker = ref(false)
 const showCategoryPicker = ref(false)
@@ -286,13 +309,28 @@ const accountCols = computed(() =>
     value: Number(a.id)
   }))
 )
+const filteredAccountCols = computed(() => {
+  const q = (accountSearchQuery.value || '').trim().toLowerCase()
+  if (!q) return accountCols.value
+  return accountCols.value.filter(a => a.text.toLowerCase().includes(q))
+})
 const toAccountCols = computed(() => {
   const fromId = form.account_id != null ? Number(form.account_id) : null
   return accountOptions.value
     .filter(a => Number(a.id) !== fromId)
     .map(a => ({ text: `${a.name} (${formatCurrency(a.current_balance ?? a.balance, a.currency)})`, value: Number(a.id) }))
 })
+const filteredToAccountCols = computed(() => {
+  const q = (toAccountSearchQuery.value || '').trim().toLowerCase()
+  if (!q) return toAccountCols.value
+  return toAccountCols.value.filter(a => a.text.toLowerCase().includes(q))
+})
 const categoryCols = computed(() => categoryOptions.value.map(c => ({ text: c.text, value: c.value })))
+const filteredCategoryCols = computed(() => {
+  const q = (categorySearchQuery.value || '').trim().toLowerCase()
+  if (!q) return categoryCols.value
+  return categoryCols.value.filter(c => c.text.toLowerCase().includes(q))
+})
 const currencyCols = computed(() => currencyOptions.value.map(c => ({ text: c.text, value: c.value })))
 
 function filterActiveCategories (categories) {
@@ -412,6 +450,21 @@ function selectToAccount (value) {
   form.to_account_id = value
   showToAccountPicker.value = false
   handleToAccountChange()
+}
+
+function onAccountPickerDismiss () {
+  showAccountPicker.value = false
+  accountSearchQuery.value = ''
+}
+
+function onToAccountPickerDismiss () {
+  showToAccountPicker.value = false
+  toAccountSearchQuery.value = ''
+}
+
+function onCategoryPickerDismiss () {
+  showCategoryPicker.value = false
+  categorySearchQuery.value = ''
 }
 
 function onDateChange (e) {
