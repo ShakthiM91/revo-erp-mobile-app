@@ -15,8 +15,8 @@
       <form @submit.prevent="submit">
         <ion-list lines="inset">
           <ion-item>
-            <ion-label position="stacked">Transaction Number</ion-label>
-            <ion-input v-model="form.transaction_number" placeholder="Transaction number" />
+            <ion-label position="stacked">Title</ion-label>
+            <ion-input v-model="form.title" placeholder="Title for the transaction" />
           </ion-item>
           <ion-item>
             <ion-label position="stacked">Type</ion-label>
@@ -66,16 +66,9 @@
             <ion-label position="stacked">Category</ion-label>
             <ion-note slot="end">{{ categoryText || 'Select' }}</ion-note>
           </ion-item>
-          <ion-item>
+          <ion-item button detail @click="showCalculator = true">
             <ion-label position="stacked">Amount</ion-label>
-            <ion-input
-              v-model.number="form.amount"
-              type="number"
-              inputmode="decimal"
-              min="0"
-              step="0.01"
-              placeholder="0.00"
-            />
+            <ion-note slot="end">{{ form.amount != null && form.amount !== '' ? formatCurrency(form.amount, form.currency) : '0.00' }}</ion-note>
           </ion-item>
           <ion-item button detail @click="showCurrencyPicker = true">
             <ion-label position="stacked">Currency</ion-label>
@@ -168,6 +161,11 @@
           </ion-list>
         </ion-content>
       </ion-modal>
+      <AmountCalculatorModal
+        :open="showCalculator"
+        v-model="form.amount"
+        @close="showCalculator = false"
+      />
     </ion-content>
   </ion-page>
 </template>
@@ -197,6 +195,7 @@ import {
   IonDatetime,
   IonSearchbar
 } from '@ionic/vue'
+import AmountCalculatorModal from '@/components/AmountCalculatorModal.vue'
 import { showToast } from '@/utils/ionicFeedback'
 import { createTransaction, updateTransaction, getTransactionById, getCategoryTree, getAccounts, getPrimaryAccount } from '@/api/accounting'
 import { getTenantCurrencies, getTenantDefaultCurrency } from '@/api/currency'
@@ -234,6 +233,7 @@ const dateTimeToIso = (value) => {
 
 const form = reactive({
   transaction_number: '',
+  title: '',
   type: 'income',
   account_id: null,
   to_account_id: null,
@@ -261,6 +261,7 @@ const showCategoryPicker = ref(false)
 const showCurrencyPicker = ref(false)
 const showDatePicker = ref(false)
 const showStatusPicker = ref(false)
+const showCalculator = ref(false)
 
 const statusCols = [{ text: 'Completed', value: 'completed' }, { text: 'Pending', value: 'pending' }, { text: 'Cancelled', value: 'cancelled' }]
 
@@ -496,6 +497,7 @@ async function loadEdit () {
       const accountId = t.account_id != null ? Number(t.account_id) : null
       const toAccountId = t.to_account_id != null ? Number(t.to_account_id) : null
       form.transaction_number = t.transaction_number || ''
+      form.title = t.title || ''
       form.type = t.type || 'income'
       form.amount = parseFloat(t.amount) || 0
       form.currency = t.currency || 'USD'
@@ -515,9 +517,9 @@ async function loadEdit () {
 
 async function submit () {
   const amt = Number(form.amount)
-  if (!form.transaction_number?.trim()) {
-    showToast('Enter transaction number')
-    return
+  const txnNum = form.transaction_number?.trim()
+  if (!txnNum) {
+    form.transaction_number = `TXN-${Date.now()}`
   }
   if (!form.account_id) {
     showToast('Select an account')
@@ -538,7 +540,8 @@ async function submit () {
   saving.value = true
   try {
     const body = {
-      transaction_number: form.transaction_number.trim(),
+      transaction_number: (form.transaction_number || '').trim() || `TXN-${Date.now()}`,
+      title: form.title?.trim() || null,
       type: form.type,
       account_id: form.account_id,
       to_account_id: form.type === 'transfer' ? form.to_account_id : null,

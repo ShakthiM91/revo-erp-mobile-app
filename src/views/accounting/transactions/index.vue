@@ -59,8 +59,8 @@
           <ion-item-sliding v-for="row in list" :key="row.id">
             <ion-item button @click="onRowClick(row)">
               <ion-label>
-                <h2>{{ row.transaction_number || '-' }}</h2>
-                <p>{{ formatDate(row.transaction_date) }} · {{ getCategoryLabel(row) }}</p>
+                <h2>{{ row.title || row.transaction_number || '-' }}</h2>
+                <p>{{ formatDate(row.transaction_date) }} · {{ getCategoryLabel(row) }}{{ row.title && row.transaction_number ? ' · ' + row.transaction_number : '' }}</p>
               </ion-label>
               <span slot="end" :class="amountClass(row)">{{ row.type === 'income' ? '+' : row.type === 'transfer' ? '→' : '-' }}{{ formatCurrency(row.amount) }}</span>
               <ion-icon v-if="row._pending" :icon="cloudOfflineOutline" slot="end" class="pending-icon" title="Not synced" />
@@ -152,6 +152,7 @@ function pendingEntryToRow(entry) {
     _pending: true,
     _pendingId: entry.id,
     transaction_number: p.transaction_number || '-',
+    title: p.title || '',
     transaction_date: dateVal,
     type: p.type || 'expense',
     amount: p.amount ?? 0,
@@ -168,6 +169,7 @@ function payloadToRow(id, payload) {
     _pending: true,
     _pendingId: id,
     transaction_number: p.transaction_number || '-',
+    title: p.title || '',
     transaction_date: dateVal,
     type: p.type || 'expense',
     amount: p.amount ?? 0,
