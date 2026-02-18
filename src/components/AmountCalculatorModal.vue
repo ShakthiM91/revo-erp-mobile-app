@@ -3,11 +3,11 @@
     <ion-header>
       <ion-toolbar>
         <ion-buttons slot="start">
-          <ion-button @click="apply">OK</ion-button>
+          <ion-back-button default-href="#" @click.native="$emit('close')" />
         </ion-buttons>
-        <ion-title>Amount</ion-title>
+        <ion-title class="calculator-title" style="text-align: center; width: 100%;">Amount</ion-title>
         <ion-buttons slot="end">
-          <ion-button @click="$emit('close')">Cancel</ion-button>
+          <ion-button @click="apply">OK</ion-button>
         </ion-buttons>
       </ion-toolbar>
     </ion-header>
@@ -15,24 +15,30 @@
       <div class="calculator-display">{{ display }}</div>
       <div class="calculator-error" v-if="error">{{ error }}</div>
       <div class="calculator-grid">
+        <span class="calc-cell-placeholder" />
+        <span class="calc-cell-placeholder" />
+        <span class="calc-cell-placeholder" />
+        <span class="calc-cell-placeholder" />
+        <span class="calc-cell-placeholder" />
+        <ion-button class="calc-btn calc-clear" @click="clear">C</ion-button>
+        <ion-button class="calc-btn calc-backspace" @click="backspace" title="Backspace">⌫</ion-button>
+        <ion-button class="calc-btn calc-op" @click="append('/')">/</ion-button>
         <ion-button class="calc-btn" @click="append('7')">7</ion-button>
         <ion-button class="calc-btn" @click="append('8')">8</ion-button>
         <ion-button class="calc-btn" @click="append('9')">9</ion-button>
-        <ion-button class="calc-btn calc-op" @click="append('/')">/</ion-button>
+        <ion-button class="calc-btn calc-op" @click="append('*')">×</ion-button>
         <ion-button class="calc-btn" @click="append('4')">4</ion-button>
         <ion-button class="calc-btn" @click="append('5')">5</ion-button>
         <ion-button class="calc-btn" @click="append('6')">6</ion-button>
-        <ion-button class="calc-btn calc-op" @click="append('*')">×</ion-button>
+        <ion-button class="calc-btn calc-op" @click="append('-')">−</ion-button>
         <ion-button class="calc-btn" @click="append('1')">1</ion-button>
         <ion-button class="calc-btn" @click="append('2')">2</ion-button>
         <ion-button class="calc-btn" @click="append('3')">3</ion-button>
-        <ion-button class="calc-btn calc-op" @click="append('-')">−</ion-button>
+        <ion-button class="calc-btn calc-op" @click="append('+')">+</ion-button>
         <ion-button class="calc-btn" @click="append('0')">0</ion-button>
-        <ion-button class="calc-btn" @click="append('00')">00</ion-button>
+        <ion-button class="calc-btn" @click="append00">00</ion-button>
         <ion-button class="calc-btn" @click="append('.')">.</ion-button>
         <ion-button class="calc-btn calc-eq" @click="onEquals">=</ion-button>
-        <ion-button class="calc-btn calc-op" @click="append('+')">+</ion-button>
-        <ion-button class="calc-btn calc-clear" @click="clear">C</ion-button>
       </div>
     </ion-content>
   </ion-modal>
@@ -141,6 +147,18 @@ function clear() {
   error.value = ''
 }
 
+function backspace() {
+  error.value = ''
+  if (display.value.length) {
+    display.value = display.value.slice(0, -1)
+  }
+}
+
+function append00() {
+  append('0')
+  append('0')
+}
+
 /** Evaluate current display and update display with result; do not close or emit. */
 function onEquals() {
   error.value = ''
@@ -219,6 +237,10 @@ watch(() => props.modelValue, (v) => {
   gap: 8px;
   padding: 0 16px 16px;
 }
+.calc-cell-placeholder {
+  min-height: 52px;
+  display: block;
+}
 .calc-btn {
   min-height: 52px;
   font-size: 1.25rem;
@@ -228,4 +250,5 @@ watch(() => props.modelValue, (v) => {
 .calc-op { --ion-color-primary: var(--ion-color-primary-shade); }
 .calc-eq { --background: var(--ion-color-primary); --color: var(--ion-color-primary-contrast); }
 .calc-clear { --background: var(--ion-color-medium); --color: var(--ion-color-medium-contrast); }
+.calc-backspace { font-size: 1.35rem; }
 </style>
