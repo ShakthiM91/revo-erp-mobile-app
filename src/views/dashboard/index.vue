@@ -59,7 +59,22 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
-import { IonPage, IonHeader, IonToolbar, IonTitle, IonContent, IonRefresher, IonRefresherContent, IonGrid, IonRow, IonCol, IonIcon } from '@ionic/vue'
+import {
+  IonPage,
+  IonHeader,
+  IonToolbar,
+  IonButtons,
+  IonTitle,
+  IonContent,
+  IonRefresher,
+  IonRefresherContent,
+  IonGrid,
+  IonRow,
+  IonCol,
+  IonIcon,
+  IonButton,
+  IonMenuToggle
+} from '@ionic/vue'
 import { peopleOutline, personOutline, cubeOutline, calendarOutline, menuOutline } from 'ionicons/icons'
 import { showToast } from '@/utils/ionicFeedback'
 import { useUserStore } from '@/store/user'

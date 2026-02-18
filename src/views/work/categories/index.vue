@@ -65,6 +65,7 @@ import {
   IonItemOption,
   IonLabel,
   IonBadge,
+  IonNote,
   IonSpinner
 } from '@ionic/vue'
 import { addOutline, menuOutline } from 'ionicons/icons'

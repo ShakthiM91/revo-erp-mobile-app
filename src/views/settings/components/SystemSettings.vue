@@ -76,7 +76,12 @@ import {
   IonNote,
   IonButton,
   IonModal,
-  IonSearchbar
+  IonSearchbar,
+  IonHeader,
+  IonToolbar,
+  IonTitle,
+  IonButtons,
+  IonContent
 } from '@ionic/vue'
 import { showToast } from '@/utils/ionicFeedback'
 import { getTenant, updateTenant } from '@/api/tenant'
