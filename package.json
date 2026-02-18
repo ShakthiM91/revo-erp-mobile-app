@@ -1,6 +1,6 @@
 {
   "name": "revo-mobile",
-  "version": "1.0.0",
+  "version": "0.0.5",
   "description": "Revo ERP Mobile App",
   "type": "module",
   "scripts": {

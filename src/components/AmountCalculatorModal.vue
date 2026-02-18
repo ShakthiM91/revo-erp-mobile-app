@@ -28,6 +28,7 @@
         <ion-button class="calc-btn" @click="append('3')">3</ion-button>
         <ion-button class="calc-btn calc-op" @click="append('-')">−</ion-button>
         <ion-button class="calc-btn" @click="append('0')">0</ion-button>
+        <ion-button class="calc-btn" @click="append('00')">00</ion-button>
         <ion-button class="calc-btn" @click="append('.')">.</ion-button>
         <ion-button class="calc-btn calc-eq" @click="onEquals">=</ion-button>
         <ion-button class="calc-btn calc-op" @click="append('+')">+</ion-button>
