@@ -15,6 +15,7 @@ export const ROUTE_MAP = {
   '/accounting/reports/income-by-category': '/reports/income-by-category',
   '/accounting/reports/expense-by-category': '/reports/expense-by-category',
   '/accounting/categories': '/accounting/categories',
+  '/accounting/budgets': '/budgets',
   '/assets/list': '/assets',
   '/assets/categories': '/assets/categories',
   '/assets/history': '/assets',

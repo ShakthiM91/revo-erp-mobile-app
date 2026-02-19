@@ -252,3 +252,38 @@ export function setPrimaryAccount(accountId) {
     data: { account_id: accountId }
   })
 }
+
+// Budgets API
+export function getBudgets(params = {}) {
+  return request({ url: '/api/accounting/budgets', method: 'get', params })
+}
+export function getOngoingBudget() {
+  return request({ url: '/api/accounting/budgets/ongoing', method: 'get' })
+}
+export function getBudgetById(id) {
+  return request({ url: `/api/accounting/budgets/${id}`, method: 'get' })
+}
+export function createBudget(data) {
+  return request({ url: '/api/accounting/budgets', method: 'post', data })
+}
+export function updateBudget(id, data) {
+  return request({ url: `/api/accounting/budgets/${id}`, method: 'put', data })
+}
+export function abandonBudget(id) {
+  return request({ url: `/api/accounting/budgets/${id}/abandon`, method: 'patch' })
+}
+export function deleteBudget(id) {
+  return request({ url: `/api/accounting/budgets/${id}`, method: 'delete' })
+}
+export function getBudgetPeriods(id) {
+  return request({ url: `/api/accounting/budgets/${id}/periods`, method: 'get' })
+}
+export function getBudgetPeriodReport(id, periodIndex) {
+  return request({ url: `/api/accounting/budgets/${id}/report/period/${periodIndex}`, method: 'get' })
+}
+export function getBudgetFullReport(id) {
+  return request({ url: `/api/accounting/budgets/${id}/report/full`, method: 'get' })
+}
+export function getBudgetDashboardSummary(id) {
+  return request({ url: `/api/accounting/budgets/${id}/dashboard-summary`, method: 'get' })
+}

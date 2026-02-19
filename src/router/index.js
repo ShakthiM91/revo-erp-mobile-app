@@ -12,6 +12,9 @@ import AccountForm from '@/views/accounting/accounts/components/AccountForm.vue'
 import FlowLog from '@/views/accounting/accounts/FlowLog.vue'
 import ReportsIndex from '@/views/accounting/reports/index.vue'
 import AccountingCategories from '@/views/accounting/categories/index.vue'
+import BudgetsIndex from '@/views/accounting/budgets/index.vue'
+import BudgetPlanForm from '@/views/accounting/budgets/BudgetPlanForm.vue'
+import BudgetReport from '@/views/accounting/budgets/BudgetReport.vue'
 import AssetIndex from '@/views/asset/index.vue'
 import AssetForm from '@/views/asset/components/AssetForm.vue'
 import AssignAsset from '@/views/asset/components/AssignAsset.vue'
@@ -136,6 +139,30 @@ const routes = [
         name: 'AccountingCategories',
         component: AccountingCategories,
         meta: { title: 'Categories', showTabbar: true, backHref: '/transactions', showLayoutHeader: false }
+      },
+      {
+        path: 'budgets',
+        name: 'Budgets',
+        component: BudgetsIndex,
+        meta: { title: 'Budgets', showTabbar: true, backHref: '/transactions', showLayoutHeader: false }
+      },
+      {
+        path: 'budgets/create',
+        name: 'BudgetCreate',
+        component: BudgetPlanForm,
+        meta: { title: 'Create Budget', showTabbar: false, showLayoutHeader: false }
+      },
+      {
+        path: 'budgets/:id',
+        name: 'BudgetEdit',
+        component: BudgetPlanForm,
+        meta: { title: 'Edit Budget', showTabbar: false, showLayoutHeader: false }
+      },
+      {
+        path: 'budgets/:id/report',
+        name: 'BudgetReport',
+        component: BudgetReport,
+        meta: { title: 'Budget Report', showTabbar: false, showLayoutHeader: false }
       },
       {
         path: 'assets',
