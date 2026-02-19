@@ -34,9 +34,8 @@
           <ion-icon :icon="walletOutline" />
           <ion-label>Finance</ion-label>
         </ion-tab-button>
-        <ion-tab-button tab="assets" href="/assets">
-          <ion-icon :icon="cubeOutline" />
-          <ion-label>Assets</ion-label>
+        <ion-tab-button class="add-transaction" @click="router.push('/transactions/create')">
+          <ion-icon :icon="addOutline" class="add-icon" />
         </ion-tab-button>
         <ion-tab-button tab="schedule" href="/schedule">
           <ion-icon :icon="calendarOutline" />
@@ -74,7 +73,6 @@ import {
   menuOutline,
   homeOutline,
   walletOutline,
-  cubeOutline,
   calendarOutline,
   personOutline,
   addOutline
@@ -99,3 +97,9 @@ const headerEndButtons = computed(() => {
   }))
 })
 </script>
+
+<style scoped>
+.add-transaction .add-icon {
+  font-size: 2rem;
+}
+</style>

@@ -12,7 +12,7 @@
       </ion-toolbar>
     </ion-header>
     <ion-content class="calculator-content">
-      <div class="calculator-display">{{ display }}</div>
+      <div class="calculator-display">{{ displayFormatted }}</div>
       <div class="calculator-error" v-if="error">{{ error }}</div>
       <div class="calculator-grid">
         <span class="calc-cell-placeholder" />
@@ -45,8 +45,8 @@
 </template>
 
 <script setup>
-import { ref, watch } from 'vue'
-import { IonModal, IonHeader, IonToolbar, IonTitle, IonButtons, IonButton, IonContent } from '@ionic/vue'
+import { ref, computed, watch } from 'vue'
+import { IonModal, IonHeader, IonToolbar, IonTitle, IonButtons, IonButton, IonBackButton, IonContent } from '@ionic/vue'
 
 const props = defineProps({
   open: { type: Boolean, default: false },
@@ -57,6 +57,18 @@ const emit = defineEmits(['close', 'update:modelValue'])
 
 const display = ref('')
 const error = ref('')
+
+function formatWithCommas(s) {
+  if (!s) return ''
+  return String(s).replace(/(-?\d+)(\.\d+)?/g, (_, intPart, decPart) => {
+    const neg = intPart.startsWith('-')
+    const num = neg ? intPart.slice(1) : intPart
+    const formatted = num.replace(/\B(?=(\d{3})+(?!\d))/g, ',')
+    return (neg ? '-' + formatted : formatted) + (decPart || '')
+  })
+}
+
+const displayFormatted = computed(() => formatWithCommas(display.value))
 
 function safeEval(expr) {
   const s = String(expr).replace(/\s/g, '')

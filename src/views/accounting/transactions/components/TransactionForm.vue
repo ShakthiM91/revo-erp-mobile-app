@@ -3,7 +3,7 @@
     <ion-header>
       <ion-toolbar>
         <ion-buttons slot="start">
-          <ion-back-button />
+          <ion-back-button default-href="/transactions" />
         </ion-buttons>
         <ion-title>{{ isEdit ? 'Edit Transaction' : 'Add Transaction' }}</ion-title>
         <ion-buttons slot="end">
@@ -74,7 +74,7 @@
               }}
             </ion-note>
           </ion-item>
-          <ion-item button detail @click="showCalculator = true">
+          <ion-item button detail @click="openCalculator">
             <ion-label position="stacked">Amount</ion-label>
             <ion-note slot="end">{{ form.amount != null && form.amount !== '' ? formatCurrency(form.amount, form.currency) : '0.00' }}</ion-note>
           </ion-item>
@@ -270,6 +270,11 @@ const showCurrencyPicker = ref(false)
 const showDatePicker = ref(false)
 const showStatusPicker = ref(false)
 const showCalculator = ref(false)
+
+function openCalculator() {
+  document.activeElement?.blur?.()
+  showCalculator.value = true
+}
 const budgetContext = ref(null)
 let budgetContextDebounceTimer = null
 
