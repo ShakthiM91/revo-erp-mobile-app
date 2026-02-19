@@ -3,7 +3,11 @@
     <ion-header>
       <ion-toolbar>
         <ion-buttons slot="start">
-          <ion-back-button />
+          <ion-menu-toggle>
+            <ion-button>
+              <ion-icon :icon="menuOutline" />
+            </ion-button>
+          </ion-menu-toggle>
         </ion-buttons>
         <ion-title>Budgets</ion-title>
         <ion-buttons slot="end">
@@ -46,7 +50,7 @@ import {
   IonHeader,
   IonToolbar,
   IonButtons,
-  IonBackButton,
+  IonMenuToggle,
   IonTitle,
   IonButton,
   IonIcon,
@@ -59,7 +63,7 @@ import {
   IonBadge,
   IonNote
 } from '@ionic/vue'
-import { addOutline } from 'ionicons/icons'
+import { addOutline, menuOutline } from 'ionicons/icons'
 import { showToast } from '@/utils/ionicFeedback'
 import { getBudgets } from '@/api/accounting'
 

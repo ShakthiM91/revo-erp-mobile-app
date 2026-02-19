@@ -66,6 +66,14 @@
             <ion-label position="stacked">Category</ion-label>
             <ion-note slot="end">{{ categoryText || 'Select' }}</ion-note>
           </ion-item>
+          <ion-item v-if="form.type === 'expense' && budgetContext && budgetContext.remaining != null" class="budget-context-item">
+            <ion-note :color="budgetContext.remaining >= 0 ? 'success' : 'danger'">
+              {{ budgetContext.remaining >= 0
+                ? `Budget (${budgetContext.plan_name}, ${budgetContext.period_label}): ${formatCurrency(budgetContext.remaining, budgetContext.currency)} remaining`
+                : `Over budget by ${formatCurrency(-budgetContext.remaining, budgetContext.currency)}`
+              }}
+            </ion-note>
+          </ion-item>
           <ion-item button detail @click="showCalculator = true">
             <ion-label position="stacked">Amount</ion-label>
             <ion-note slot="end">{{ form.amount != null && form.amount !== '' ? formatCurrency(form.amount, form.currency) : '0.00' }}</ion-note>
@@ -197,7 +205,7 @@ import {
 } from '@ionic/vue'
 import AmountCalculatorModal from '@/components/AmountCalculatorModal.vue'
 import { showToast } from '@/utils/ionicFeedback'
-import { createTransaction, updateTransaction, getTransactionById, getCategoryTree, getAccounts, getPrimaryAccount } from '@/api/accounting'
+import { createTransaction, updateTransaction, getTransactionById, getCategoryTree, getAccounts, getPrimaryAccount, getBudgetContext } from '@/api/accounting'
 import { getTenantCurrencies, getTenantDefaultCurrency } from '@/api/currency'
 import { useSyncStore } from '@/store/sync'
 
@@ -262,6 +270,8 @@ const showCurrencyPicker = ref(false)
 const showDatePicker = ref(false)
 const showStatusPicker = ref(false)
 const showCalculator = ref(false)
+const budgetContext = ref(null)
+let budgetContextDebounceTimer = null
 
 const statusCols = [{ text: 'Completed', value: 'completed' }, { text: 'Pending', value: 'pending' }, { text: 'Cancelled', value: 'cancelled' }]
 
@@ -422,6 +432,29 @@ function checkCreditLimit () {
   }
 }
 
+async function fetchBudgetContext () {
+  if (form.type !== 'expense' || !form.category_id || !form.transaction_date) {
+    budgetContext.value = null
+    return
+  }
+  try {
+    const dateStr = String(form.transaction_date).split(' ')[0]
+    const res = await getBudgetContext({ date: dateStr, category_id: form.category_id })
+    budgetContext.value = res?.data || null
+  } catch {
+    budgetContext.value = null
+  }
+}
+
+function scheduleBudgetContextFetch () {
+  if (budgetContextDebounceTimer) clearTimeout(budgetContextDebounceTimer)
+  budgetContextDebounceTimer = setTimeout(() => {
+    if (form.type === 'expense') fetchBudgetContext()
+    else budgetContext.value = null
+    budgetContextDebounceTimer = null
+  }, 300)
+}
+
 function selectType (value) {
   form.type = value
   if (value === 'transfer') {
@@ -486,6 +519,10 @@ watch(() => form.type, (newType, oldType) => {
 })
 
 watch([() => form.amount, () => form.account_id], () => checkCreditLimit())
+
+watch([() => form.type, () => form.category_id, () => form.transaction_date], () => {
+  scheduleBudgetContextFetch()
+})
 
 async function loadEdit () {
   if (!id) return
@@ -605,6 +642,8 @@ ion-content { --background: #f7f8fa; }
 .positive { color: var(--ion-color-success); }
 .negative { color: var(--ion-color-danger); }
 .credit-warning ion-note { font-size: 12px; }
+.budget-context-item { --min-height: 32px; }
+.budget-context-item ion-note { font-size: 12px; }
 ion-segment { width: 100%; }
 ion-segment-button { flex: 1; min-width: 0; }
 /* Transaction type colors (matches tenant-admin) */

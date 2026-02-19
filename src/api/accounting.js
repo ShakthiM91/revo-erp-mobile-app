@@ -260,6 +260,10 @@ export function getBudgets(params = {}) {
 export function getOngoingBudget() {
   return request({ url: '/api/accounting/budgets/ongoing', method: 'get' })
 }
+
+export function getBudgetContext(params) {
+  return request({ url: '/api/accounting/budgets/context', method: 'get', params })
+}
 export function getBudgetById(id) {
   return request({ url: `/api/accounting/budgets/${id}`, method: 'get' })
 }
