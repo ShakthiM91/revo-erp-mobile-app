@@ -30,9 +30,39 @@
           <ion-label position="stacked">End Date</ion-label>
           <ion-input v-model="form.end_date" type="date" />
         </ion-item>
+        <ion-item>
+          <ion-label position="stacked">Currency</ion-label>
+          <ion-select v-model="form.currency" interface="action-sheet">
+            <ion-select-option
+              v-for="c in currencyOptions"
+              :key="c.code"
+              :value="c.code"
+            >
+              {{ c.code }} - {{ c.name }}
+            </ion-select-option>
+          </ion-select>
+        </ion-item>
       </ion-list>
 
       <h4 class="ion-padding-start">Budget by Parent Category</h4>
+      <p class="ion-padding-start ion-padding-end hint-text">Add categories to budget. Removed categories' expenses are excluded from reports.</p>
+      <ion-item>
+        <ion-label>Add category</ion-label>
+        <ion-select
+          v-model="selectedCategoryToAdd"
+          placeholder="Select category"
+          interface="action-sheet"
+          @ionChange="(e) => addCategory(e.detail.value)"
+        >
+          <ion-select-option
+            v-for="c in availableCategoriesToAdd"
+            :key="c.id"
+            :value="c.id"
+          >
+            {{ c.name }}
+          </ion-select-option>
+        </ion-select>
+      </ion-item>
       <ion-list lines="inset">
         <ion-item v-for="item in categoryItems" :key="item.category_id">
           <ion-label>{{ item.category_name }}</ion-label>
@@ -45,6 +75,9 @@
             style="max-width: 90px; text-align: right"
           />
           <ion-toggle v-model="item.is_divertable" slot="end">Divert</ion-toggle>
+          <ion-button fill="clear" color="danger" size="small" slot="end" @click="removeCategory(item)">
+            Remove
+          </ion-button>
         </ion-item>
       </ion-list>
 
@@ -79,6 +112,7 @@ import {
 } from '@ionic/vue'
 import { showToast } from '@/utils/ionicFeedback'
 import { getCategories, getBudgetById, createBudget, updateBudget } from '@/api/accounting'
+import { getTenantCurrencies, getTenantDefaultCurrency } from '@/api/currency'
 
 const route = useRoute()
 const router = useRouter()
@@ -89,32 +123,61 @@ const form = reactive({
   name: '',
   period_type: 'month',
   start_date: '',
-  end_date: ''
+  end_date: '',
+  currency: ''
 })
+const expenseCategories = ref([])
 const categoryItems = ref([])
+const selectedCategoryToAdd = ref(null)
+const currencyOptions = ref([])
 const saving = ref(false)
 
-function buildCategoryItems(categories, existing = []) {
-  const map = new Map(existing.map((i) => [i.category_id, i]))
-  return (categories || [])
-    .filter((c) => c.type === 'expense' && c.parent_id == null)
-    .map((cat) => {
-      const ex = map.get(cat.id)
+const parentExpenseCategories = computed(() =>
+  (expenseCategories.value || []).filter((c) => c.type === 'expense' && c.parent_id == null)
+)
+
+const availableCategoriesToAdd = computed(() => {
+  const idsInTable = new Set(categoryItems.value.map((i) => i.category_id))
+  return parentExpenseCategories.value.filter((c) => !idsInTable.has(c.id))
+})
+
+function buildCategoryItemsFromExisting(categories, existingItems = []) {
+  const catMap = new Map((categories || []).map((c) => [c.id, c]))
+  return (existingItems || [])
+    .filter((i) => catMap.has(i.category_id))
+    .map((i) => {
+      const cat = catMap.get(i.category_id)
       return {
-        category_id: cat.id,
-        category_name: cat.name,
-        amount: ex ? parseFloat(ex.amount) : 0,
-        is_divertable: ex ? !!ex.is_divertable : false
+        category_id: i.category_id,
+        category_name: cat?.name || 'Unknown',
+        amount: parseFloat(i.amount) || 0,
+        is_divertable: Boolean(i.is_divertable)
       }
     })
+}
+
+function addCategory(categoryId) {
+  const id = categoryId != null ? Number(categoryId) : null
+  if (id == null || isNaN(id)) return
+  const cat = parentExpenseCategories.value.find((c) => Number(c.id) === id)
+  if (!cat || categoryItems.value.some((i) => i.category_id === id)) return
+  categoryItems.value.push({
+    category_id: cat.id,
+    category_name: cat.name,
+    amount: 0,
+    is_divertable: false
+  })
+  selectedCategoryToAdd.value = null
+}
+
+function removeCategory(row) {
+  categoryItems.value = categoryItems.value.filter((i) => i.category_id !== row.category_id)
 }
 
 async function loadCategories() {
   try {
     const res = await getCategories('expense')
-    if (!isEdit.value) {
-      categoryItems.value = buildCategoryItems(res?.data || [])
-    }
+    expenseCategories.value = res?.data || []
   } catch (e) {
     showToast('Failed to load categories')
   }
@@ -134,8 +197,10 @@ async function loadPlan() {
     form.period_type = data.period_type
     form.start_date = data.start_date
     form.end_date = data.end_date
-    const catRes = await getCategories('expense')
-    categoryItems.value = buildCategoryItems(catRes?.data || [], data.items || [])
+    form.currency = data.currency || 'USD'
+    const cats = expenseCategories.value.length > 0 ? expenseCategories.value : (await getCategories('expense'))?.data || []
+    if (expenseCategories.value.length === 0) expenseCategories.value = cats
+    categoryItems.value = buildCategoryItemsFromExisting(cats, data.items || [])
   } catch (e) {
     showToast('Failed to load')
   }
@@ -155,11 +220,12 @@ async function handleSubmit() {
   }
   saving.value = true
   try {
+    const payload = { ...form, currency: form.currency || 'USD', items }
     if (isEdit.value) {
-      await updateBudget(planId.value, { ...form, items })
+      await updateBudget(planId.value, payload)
       showToast('Budget updated')
     } else {
-      await createBudget({ ...form, items })
+      await createBudget(payload)
       showToast('Budget created')
     }
     router.push('/budgets')
@@ -170,8 +236,41 @@ async function handleSubmit() {
   }
 }
 
+const loadCurrencies = async () => {
+  try {
+    const [listRes, defaultRes] = await Promise.all([
+      getTenantCurrencies().catch(() => ({ data: { data: [{ code: 'USD', name: 'US Dollar' }] } })),
+      getTenantDefaultCurrency().catch(() => null)
+    ])
+    const list = listRes?.data?.data ?? listRes?.data ?? []
+    currencyOptions.value = Array.isArray(list) ? list : []
+    if (!isEdit.value && !form.currency) {
+      const def = defaultRes?.data?.data ?? defaultRes?.data
+      form.currency = def?.code ?? currencyOptions.value[0]?.code ?? 'USD'
+    }
+    if (currencyOptions.value.length === 0) {
+      currencyOptions.value = [{ code: 'USD', name: 'US Dollar' }]
+      if (!form.currency) form.currency = 'USD'
+    }
+  } catch {
+    currencyOptions.value = [{ code: 'USD', name: 'US Dollar' }]
+    if (!form.currency) form.currency = 'USD'
+  }
+}
+
 onMounted(async () => {
+  await loadCurrencies()
   await loadCategories()
   if (isEdit.value) await loadPlan()
+  else if (!form.currency && currencyOptions.value.length) form.currency = currencyOptions.value[0].code
 })
 </script>
+
+<style scoped>
+.hint-text {
+  font-size: 13px;
+  color: var(--ion-color-medium);
+  margin-top: 0;
+  margin-bottom: 8px;
+}
+</style>
