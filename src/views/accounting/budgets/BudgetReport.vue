@@ -15,7 +15,7 @@
 
       <template v-else>
         <div v-if="planStart && planEnd" class="plan-period">
-          Plan: {{ planStart }} to {{ planEnd }}
+          Plan: {{ formatDateRange(planStart, planEnd) }}
           <ion-badge color="medium">{{ currency }}</ion-badge>
         </div>
 
@@ -207,6 +207,7 @@
 
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
+import { formatDateRange } from '@/utils/dateUtils'
 import { useRoute } from 'vue-router'
 import {
   IonPage,
