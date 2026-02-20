@@ -27,6 +27,7 @@
             placeholder="All statuses"
           >
             <ion-select-option value="">All</ion-select-option>
+            <ion-select-option value="draft">Draft</ion-select-option>
             <ion-select-option value="active">Active</ion-select-option>
             <ion-select-option value="abandoned">Abandoned</ion-select-option>
             <ion-select-option value="completed">Completed</ion-select-option>
@@ -49,7 +50,8 @@
           </ion-item>
           <ion-item-options side="end">
             <ion-item-option color="primary" @click="goToReport(row)">Report</ion-item-option>
-            <ion-item-option v-if="row.status === 'active'" color="primary" @click="goToEdit(row)">Edit</ion-item-option>
+            <ion-item-option v-if="row.status === 'active' || row.status === 'draft'" color="primary" @click="goToEdit(row)">Edit</ion-item-option>
+            <ion-item-option v-if="row.status === 'draft'" color="success" @click="onActivate(row)">Activate</ion-item-option>
             <ion-item-option v-if="row.status === 'active'" color="warning" @click="onAbandon(row)">Abandon</ion-item-option>
             <ion-item-option color="danger" @click="onDelete(row)">Delete</ion-item-option>
           </ion-item-options>
@@ -92,7 +94,7 @@ import {
 import { addOutline, menuOutline } from 'ionicons/icons'
 import { showToast, showConfirmDialog } from '@/utils/ionicFeedback'
 import { formatDateRange } from '@/utils/dateUtils'
-import { getBudgets, abandonBudget, deleteBudget } from '@/api/accounting'
+import { getBudgets, abandonBudget, activateBudget, deleteBudget } from '@/api/accounting'
 
 const router = useRouter()
 const list = ref([])
@@ -100,7 +102,7 @@ const loading = ref(false)
 const statusFilter = ref('')
 
 function statusColor(s) {
-  const t = { active: 'success', abandoned: 'warning', completed: 'medium' }
+  const t = { draft: 'medium', active: 'success', abandoned: 'warning', completed: 'medium' }
   return t[s] || 'medium'
 }
 
@@ -133,6 +135,22 @@ function goToReport(row) {
 
 function goToEdit(row) {
   router.push(`/budgets/${row.id}`)
+}
+
+async function onActivate(row) {
+  try {
+    await showConfirmDialog({
+      title: 'Activate Budget Plan',
+      message: `Activate "${row.name}"? This will make it the active budget plan and start tracking expenses.`,
+      confirmText: 'Activate',
+      cancelText: 'Cancel'
+    })
+    await activateBudget(row.id)
+    showToast('Budget plan activated')
+    await load()
+  } catch (e) {
+    if (e !== 'cancel') showToast(e?.response?.data?.error || 'Failed to activate')
+  }
 }
 
 async function onAbandon(row) {
