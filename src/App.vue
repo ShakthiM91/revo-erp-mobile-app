@@ -4,12 +4,14 @@
       <AppMenuContent />
     </ion-menu>
     <ion-router-outlet id="main" />
+    <PwaInstallBanner />
   </ion-app>
 </template>
 
 <script setup>
 import { IonApp, IonMenu, IonRouterOutlet } from '@ionic/vue'
 import AppMenuContent from '@/components/AppMenu/AppMenuContent.vue'
+import PwaInstallBanner from '@/components/PwaInstallBanner.vue'
 </script>
 
 <style>

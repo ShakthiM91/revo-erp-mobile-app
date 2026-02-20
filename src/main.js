@@ -56,7 +56,13 @@ async function initAppResumeSync() {
       if (isActive) onResume()
     })
   } catch {
-    // Not in Capacitor (e.g. browser); ignore
+    // Not in Capacitor (e.g. browser/PWA); use visibility fallback
+  }
+  // Fallback for PWA/browser: sync when user returns to tab
+  if (typeof document !== 'undefined') {
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') onResume()
+    })
   }
 }
 initAppResumeSync()
