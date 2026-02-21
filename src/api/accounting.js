@@ -267,6 +267,12 @@ export function getBudgetContext(params) {
 export function getBudgetById(id) {
   return request({ url: `/api/accounting/budgets/${id}`, method: 'get' })
 }
+export function getBudgetLog(id) {
+  return request({ url: `/api/accounting/budgets/${id}/log`, method: 'get' })
+}
+export function getBudgetCategoryBreakdown(id, params) {
+  return request({ url: `/api/accounting/budgets/${id}/category-breakdown`, method: 'get', params })
+}
 export function createBudget(data) {
   return request({ url: '/api/accounting/budgets', method: 'post', data })
 }

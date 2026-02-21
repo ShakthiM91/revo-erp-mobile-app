@@ -97,7 +97,7 @@
               <span :class="(periodReport.variance || 0) >= 0 ? 'success' : 'danger'">{{ formatCurrency(periodReport.variance) }}</span>
             </div>
             <ion-list lines="inset">
-              <ion-item v-for="item in (periodReport.items || [])" :key="item.category_id">
+              <ion-item v-for="item in (periodReport.items || [])" :key="item.category_id" button @click="openBreakdown(item)">
                 <ion-label>
                   <h2>{{ item.category_name }}</h2>
                   <p>
@@ -116,9 +116,35 @@
                 </ion-label>
                 <ion-note slot="end">
                   <ion-badge v-if="item.is_divertable" color="medium">Divert</ion-badge>
+                  <ion-icon name="chevron-forward" class="chevron-icon" />
                 </ion-note>
               </ion-item>
             </ion-list>
+            <ion-modal :is-open="breakdownModalOpen" @didDismiss="breakdownModalOpen = false">
+              <ion-header>
+                <ion-toolbar>
+                  <ion-title>Child categories: {{ breakdownCategoryName }}</ion-title>
+                  <ion-buttons slot="end">
+                    <ion-button @click="breakdownModalOpen = false">Close</ion-button>
+                  </ion-buttons>
+                </ion-toolbar>
+              </ion-header>
+              <ion-content class="ion-padding">
+                <ion-spinner v-if="breakdownLoading" class="ion-text-center" />
+                <ion-list v-else-if="breakdownData.length > 0" lines="inset">
+                  <ion-item v-for="row in breakdownData" :key="row.category_id">
+                    <ion-label>{{ row.category_name }}</ion-label>
+                    <ion-note slot="end">
+                      {{ formatCurrency(row.actual) }}
+                      <span v-if="breakdownParentActual > 0" class="percent-badge">
+                        ({{ ((row.actual / breakdownParentActual) * 100).toFixed(1) }}%)
+                      </span>
+                    </ion-note>
+                  </ion-item>
+                </ion-list>
+                <ion-note v-else class="empty-note">No child category spend in this period</ion-note>
+              </ion-content>
+            </ion-modal>
             <ion-card v-if="periodReport.divertableContributors?.length && periodReport.overrunCategories?.length" class="divertable-summary">
               <ion-card-header>
                 <ion-card-title>Divertable Allocation</ion-card-title>
@@ -236,10 +262,12 @@ import {
   IonCard,
   IonCardHeader,
   IonCardTitle,
-  IonCardContent
+  IonCardContent,
+  IonModal,
+  IonIcon
 } from '@ionic/vue'
 import { showToast } from '@/utils/ionicFeedback'
-import { getBudgetById, getBudgetFullReport, getBudgetPeriodReport, getBudgetPeriods } from '@/api/accounting'
+import { getBudgetById, getBudgetFullReport, getBudgetPeriodReport, getBudgetPeriods, getBudgetCategoryBreakdown } from '@/api/accounting'
 import { getReports } from '@/api/accounting'
 
 const route = useRoute()
@@ -256,6 +284,11 @@ const periodReport = ref(null)
 const periods = ref([])
 const selectedPeriodIndex = ref(0)
 const currency = ref('USD')
+const breakdownModalOpen = ref(false)
+const breakdownData = ref([])
+const breakdownCategoryName = ref('')
+const breakdownParentActual = ref(0)
+const breakdownLoading = ref(false)
 
 const reportDate = computed(() =>
   new Date().toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' })
@@ -289,6 +322,27 @@ const formatPeriodLabel = (periodStart, periodEnd) => {
 const getPercentUsed = (row) => {
   if (!row.budget || row.budget <= 0) return 0
   return (row.actual / row.budget) * 100
+}
+
+const openBreakdown = async (item) => {
+  if (!planId.value || !periodReport.value?.period_start || !periodReport.value?.period_end) return
+  breakdownCategoryName.value = item.category_name
+  breakdownParentActual.value = item.actual || 0
+  breakdownModalOpen.value = true
+  breakdownData.value = []
+  breakdownLoading.value = true
+  try {
+    const res = await getBudgetCategoryBreakdown(planId.value, {
+      period_start: periodReport.value.period_start,
+      period_end: periodReport.value.period_end,
+      category_id: item.category_id
+    })
+    breakdownData.value = res?.data || []
+  } catch (e) {
+    showToast('Failed to load breakdown')
+  } finally {
+    breakdownLoading.value = false
+  }
 }
 
 const onTabChange = async () => {
@@ -535,5 +589,21 @@ ion-segment {
 .divertable-row strong {
   display: block;
   margin-bottom: 4px;
+}
+.chevron-icon {
+  font-size: 18px;
+  margin-left: 4px;
+  color: var(--ion-color-medium);
+}
+.empty-note {
+  display: block;
+  padding: 16px;
+  color: var(--ion-color-medium);
+  font-size: 14px;
+}
+.percent-badge {
+  font-size: 12px;
+  margin-left: 4px;
+  color: var(--ion-color-medium);
 }
 </style>

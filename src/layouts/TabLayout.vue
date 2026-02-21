@@ -103,3 +103,10 @@ const headerEndButtons = computed(() => {
   font-size: 2rem;
 }
 </style>
+
+<style>
+/* Extend ion-tab-bar to bottom of screen on iOS (safe area inset) */
+ion-tab-bar {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+</style>

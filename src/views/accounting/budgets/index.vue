@@ -50,6 +50,7 @@
           </ion-item>
           <ion-item-options side="end">
             <ion-item-option color="primary" @click="goToReport(row)">Report</ion-item-option>
+            <ion-item-option color="medium" @click="onHistory(row)">History</ion-item-option>
             <ion-item-option v-if="row.status === 'active' || row.status === 'draft'" color="primary" @click="goToEdit(row)">Edit</ion-item-option>
             <ion-item-option v-if="row.status === 'draft'" color="success" @click="onActivate(row)">Activate</ion-item-option>
             <ion-item-option v-if="row.status === 'active'" color="warning" @click="onAbandon(row)">Abandon</ion-item-option>
@@ -62,6 +63,28 @@
         <ion-button fill="outline" size="small" @click="$router.push('/budgets/create')">Create one</ion-button>
       </div>
     </ion-content>
+
+    <ion-modal :is-open="historyModalOpen" @didDismiss="historyModalOpen = false">
+      <ion-header>
+        <ion-toolbar>
+          <ion-title>Budget Change History</ion-title>
+          <ion-buttons slot="end">
+            <ion-button @click="historyModalOpen = false">Close</ion-button>
+          </ion-buttons>
+        </ion-toolbar>
+      </ion-header>
+      <ion-content class="ion-padding">
+        <ion-list v-if="historyLogs.length > 0" lines="inset">
+          <ion-item v-for="entry in historyLogs" :key="entry.id">
+            <ion-label>
+              <h3>{{ formatLogDate(entry.created_at) }} · {{ entry.action }}</h3>
+              <p v-if="entry.changes && Object.keys(entry.changes).length">{{ formatLogChanges(entry) }}</p>
+            </ion-label>
+          </ion-item>
+        </ion-list>
+        <ion-note v-else class="empty-note">No history</ion-note>
+      </ion-content>
+    </ion-modal>
   </ion-page>
 </template>
 
@@ -89,17 +112,20 @@ import {
   IonSelectOption,
   IonLabel,
   IonBadge,
-  IonNote
+  IonNote,
+  IonModal
 } from '@ionic/vue'
 import { addOutline, menuOutline } from 'ionicons/icons'
 import { showToast, showConfirmDialog } from '@/utils/ionicFeedback'
 import { formatDateRange } from '@/utils/dateUtils'
-import { getBudgets, abandonBudget, activateBudget, deleteBudget } from '@/api/accounting'
+import { getBudgets, getBudgetLog, abandonBudget, activateBudget, deleteBudget } from '@/api/accounting'
 
 const router = useRouter()
 const list = ref([])
 const loading = ref(false)
 const statusFilter = ref('')
+const historyModalOpen = ref(false)
+const historyLogs = ref([])
 
 function statusColor(s) {
   const t = { draft: 'medium', active: 'success', abandoned: 'warning', completed: 'medium' }
@@ -131,6 +157,41 @@ async function onRefresh(ev) {
 
 function goToReport(row) {
   router.push(`/budgets/${row.id}/report`)
+}
+
+async function onHistory(row) {
+  try {
+    const res = await getBudgetLog(row.id)
+    const raw = res?.data || []
+    historyLogs.value = raw.map((l) => ({
+      ...l,
+      changes: typeof l.changes === 'string' ? (() => { try { return JSON.parse(l.changes) } catch { return {} } })() : (l.changes || {})
+    }))
+    historyModalOpen.value = true
+  } catch (e) {
+    showToast('Failed to load history')
+  }
+}
+
+function formatLogDate(d) {
+  if (!d) return ''
+  return new Date(d).toLocaleString()
+}
+
+function formatLogChanges(entry) {
+  const c = entry.changes
+  if (!c || !Object.keys(c).length) return ''
+  if (entry.action === 'created') {
+    return `${c.name || ''} · ${c.period_type || ''} · ${c.start_date || ''} to ${c.end_date || ''}`
+  }
+  if (entry.action === 'updated') {
+    const parts = []
+    if (c.fields && Object.keys(c.fields).length) parts.push(`Fields: ${Object.keys(c.fields).join(', ')}`)
+    if (c.items_changed) parts.push('items changed')
+    return parts.join(' · ')
+  }
+  if (entry.action === 'deleted') return c.name || ''
+  return ''
 }
 
 function goToEdit(row) {
@@ -205,5 +266,10 @@ onMounted(load)
 .empty-state ion-note {
   display: block;
   margin-bottom: 16px;
+}
+.empty-note {
+  display: block;
+  padding: 24px;
+  text-align: center;
 }
 </style>
