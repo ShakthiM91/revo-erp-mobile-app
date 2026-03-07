@@ -1,0 +1,8 @@
+{
+  "appId": "com.revoerp.app",
+  "appName": "Revo Easy ERP",
+  "webDir": "dist",
+  "server": {
+    "iosScheme": "https"
+  }
+}

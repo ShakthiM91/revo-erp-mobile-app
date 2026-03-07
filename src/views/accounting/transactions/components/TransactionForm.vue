@@ -1,0 +1,667 @@
+<template>
+  <ion-page>
+    <ion-header>
+      <ion-toolbar>
+        <ion-buttons slot="start">
+          <ion-back-button default-href="/transactions" />
+        </ion-buttons>
+        <ion-title>{{ isEdit ? 'Edit Transaction' : 'Add Transaction' }}</ion-title>
+        <ion-buttons slot="end">
+          <ion-button :disabled="saving" @click="submit">Save</ion-button>
+        </ion-buttons>
+      </ion-toolbar>
+    </ion-header>
+    <ion-content>
+      <form @submit.prevent="submit">
+        <ion-list lines="inset">
+          <ion-item>
+            <ion-label position="stacked">Title</ion-label>
+            <ion-input v-model="form.title" placeholder="Title for the transaction" />
+          </ion-item>
+          <ion-item>
+            <ion-label position="stacked">Type</ion-label>
+            <ion-segment :value="form.type" @ionChange="onTypeChange($event)">
+              <ion-segment-button value="income" class="type-income">
+                <ion-label>Income</ion-label>
+              </ion-segment-button>
+              <ion-segment-button value="expense" class="type-expense">
+                <ion-label>Expense</ion-label>
+              </ion-segment-button>
+              <ion-segment-button value="transfer" class="type-transfer">
+                <ion-label>Transfer</ion-label>
+              </ion-segment-button>
+            </ion-segment>
+          </ion-item>
+          <ion-item v-if="form.type !== 'transfer'" button detail @click="showAccountPicker = true">
+            <ion-label position="stacked">Account</ion-label>
+            <ion-note slot="end">{{ accountText || 'Select' }}</ion-note>
+          </ion-item>
+          <ion-item v-if="form.type === 'transfer'" button detail @click="showAccountPicker = true">
+            <ion-label position="stacked">From Account</ion-label>
+            <ion-note slot="end">{{ accountText || 'Select' }}</ion-note>
+          </ion-item>
+          <ion-item v-if="selectedAccount" class="balance-note">
+            <ion-note>
+              Balance: <strong :class="selectedAccount.current_balance >= 0 ? 'positive' : 'negative'">
+                {{ formatCurrency(selectedAccount.current_balance, selectedAccount.currency) }}
+              </strong>
+              <span v-if="selectedAccount.credit_limit"> · Limit: {{ formatCurrency(selectedAccount.credit_limit, selectedAccount.currency) }}</span>
+            </ion-note>
+          </ion-item>
+          <ion-item v-if="form.type === 'transfer'" button detail @click="showToAccountPicker = true">
+            <ion-label position="stacked">To Account</ion-label>
+            <ion-note slot="end">{{ toAccountText || 'Select' }}</ion-note>
+          </ion-item>
+          <ion-item v-if="selectedToAccount && form.type === 'transfer'" class="balance-note">
+            <ion-note>
+              Balance: <strong :class="selectedToAccount.current_balance >= 0 ? 'positive' : 'negative'">
+                {{ formatCurrency(selectedToAccount.current_balance, selectedToAccount.currency) }}
+              </strong>
+            </ion-note>
+          </ion-item>
+          <ion-item v-if="creditWarning" class="credit-warning">
+            <ion-note color="warning">{{ creditWarning }}</ion-note>
+          </ion-item>
+          <ion-item v-if="form.type !== 'transfer'" button detail @click="showCategoryPicker = true">
+            <ion-label position="stacked">Category</ion-label>
+            <ion-note slot="end">{{ categoryText || 'Select' }}</ion-note>
+          </ion-item>
+          <ion-item v-if="form.type === 'expense' && budgetContext && budgetContext.remaining != null" class="budget-context-item">
+            <ion-note :color="budgetContext.remaining >= 0 ? 'success' : 'danger'">
+              {{ budgetContext.remaining >= 0
+                ? `Budget (${budgetContext.plan_name}, ${budgetContext.period_label}): ${formatCurrency(budgetContext.remaining, budgetContext.currency)} remaining`
+                : `Over budget by ${formatCurrency(-budgetContext.remaining, budgetContext.currency)}`
+              }}
+            </ion-note>
+          </ion-item>
+          <ion-item button detail @click="openCalculator">
+            <ion-label position="stacked">Amount</ion-label>
+            <ion-note slot="end">{{ form.amount != null && form.amount !== '' ? formatCurrency(form.amount, form.currency) : '0.00' }}</ion-note>
+          </ion-item>
+          <ion-item button detail @click="showCurrencyPicker = true">
+            <ion-label position="stacked">Currency</ion-label>
+            <ion-note slot="end">{{ currencyText }}</ion-note>
+          </ion-item>
+          <ion-item>
+            <ion-label position="stacked">Description</ion-label>
+            <ion-textarea v-model="form.description" placeholder="Optional" rows="2" />
+          </ion-item>
+        </ion-list>
+        <ion-item-divider />
+        <ion-list lines="inset">
+          <ion-item button detail @click="showDatePicker = true">
+            <ion-label position="stacked">Transaction Date & Time</ion-label>
+            <ion-note slot="end">{{ dateText }}</ion-note>
+          </ion-item>
+          <ion-item button detail @click="showStatusPicker = true">
+            <ion-label position="stacked">Status</ion-label>
+            <ion-note slot="end">{{ statusText }}</ion-note>
+          </ion-item>
+        </ion-list>
+      </form>
+
+      <ion-modal :is-open="showAccountPicker" @didDismiss="onAccountPickerDismiss">
+        <ion-header><ion-toolbar><ion-title>{{ form.type === 'transfer' ? 'From Account' : 'Account' }}</ion-title><ion-buttons slot="end"><ion-button @click="showAccountPicker = false">Cancel</ion-button></ion-buttons></ion-toolbar></ion-header>
+        <ion-content>
+          <ion-searchbar
+            v-model="accountSearchQuery"
+            placeholder="Search accounts..."
+            debounce="150"
+          />
+          <ion-list>
+            <ion-item v-for="a in filteredAccountCols" :key="a.value" button @click="selectAccount(a.value)"><ion-label>{{ a.text }}</ion-label></ion-item>
+            <ion-item v-if="filteredAccountCols.length === 0"><ion-label color="medium">No accounts match</ion-label></ion-item>
+          </ion-list>
+        </ion-content>
+      </ion-modal>
+      <ion-modal :is-open="showToAccountPicker" @didDismiss="onToAccountPickerDismiss">
+        <ion-header><ion-toolbar><ion-title>To Account</ion-title><ion-buttons slot="end"><ion-button @click="showToAccountPicker = false">Cancel</ion-button></ion-buttons></ion-toolbar></ion-header>
+        <ion-content>
+          <ion-searchbar
+            v-model="toAccountSearchQuery"
+            placeholder="Search accounts..."
+            debounce="150"
+          />
+          <ion-list>
+            <ion-item v-for="a in filteredToAccountCols" :key="a.value" button @click="selectToAccount(a.value)"><ion-label>{{ a.text }}</ion-label></ion-item>
+            <ion-item v-if="filteredToAccountCols.length === 0"><ion-label color="medium">No accounts match</ion-label></ion-item>
+          </ion-list>
+        </ion-content>
+      </ion-modal>
+      <!-- category picker -->
+      <ion-modal :is-open="showCategoryPicker" @didDismiss="onCategoryPickerDismiss">
+        <ion-header><ion-toolbar><ion-title>Category</ion-title><ion-buttons slot="end"><ion-button @click="showCategoryPicker = false">Cancel</ion-button></ion-buttons></ion-toolbar></ion-header>
+        <ion-content>
+          <ion-searchbar
+            v-model="categorySearchQuery"
+            placeholder="Search categories..."
+            debounce="150"
+          />
+          <ion-list>
+            <ion-item v-for="c in filteredCategoryCols" :key="c.value" button @click="form.category_id = c.value; showCategoryPicker = false"><ion-label>{{ c.text }}</ion-label></ion-item>
+            <ion-item v-if="filteredCategoryCols.length === 0"><ion-label color="medium">No categories match</ion-label></ion-item>
+          </ion-list>
+        </ion-content>
+      </ion-modal>
+      <ion-modal :is-open="showCurrencyPicker" @didDismiss="showCurrencyPicker = false">
+        <ion-header><ion-toolbar><ion-title>Currency</ion-title><ion-buttons slot="end"><ion-button @click="showCurrencyPicker = false">Cancel</ion-button></ion-buttons></ion-toolbar></ion-header>
+        <ion-content>
+          <ion-list>
+            <ion-item v-for="c in currencyCols" :key="c.value" button @click="form.currency = c.value; showCurrencyPicker = false"><ion-label>{{ c.text }}</ion-label></ion-item>
+          </ion-list>
+        </ion-content>
+      </ion-modal>
+      <ion-modal :is-open="showDatePicker" @didDismiss="showDatePicker = false">
+        <ion-header><ion-toolbar><ion-title>Date & Time</ion-title><ion-buttons slot="end"><ion-button @click="showDatePicker = false">OK</ion-button></ion-buttons></ion-toolbar></ion-header>
+        <ion-content>
+          <ion-datetime
+            presentation="date-time"
+            :value="dateTimeToIso(form.transaction_date)"
+            @ionChange="onDateChange"
+          />
+        </ion-content>
+      </ion-modal>
+      <ion-modal :is-open="showStatusPicker" @didDismiss="showStatusPicker = false">
+        <ion-header><ion-toolbar><ion-title>Status</ion-title><ion-buttons slot="end"><ion-button @click="showStatusPicker = false">Cancel</ion-button></ion-buttons></ion-toolbar></ion-header>
+        <ion-content>
+          <ion-list>
+            <ion-item v-for="c in statusCols" :key="c.value" button @click="form.status = c.value; showStatusPicker = false"><ion-label>{{ c.text }}</ion-label></ion-item>
+          </ion-list>
+        </ion-content>
+      </ion-modal>
+      <AmountCalculatorModal
+        :open="showCalculator"
+        v-model="form.amount"
+        @close="showCalculator = false"
+      />
+    </ion-content>
+  </ion-page>
+</template>
+
+<script setup>
+import { ref, reactive, computed, watch, onMounted } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import {
+  IonPage,
+  IonHeader,
+  IonToolbar,
+  IonButtons,
+  IonBackButton,
+  IonTitle,
+  IonButton,
+  IonContent,
+  IonList,
+  IonItem,
+  IonLabel,
+  IonInput,
+  IonTextarea,
+  IonNote,
+  IonItemDivider,
+  IonSegment,
+  IonSegmentButton,
+  IonModal,
+  IonDatetime,
+  IonSearchbar
+} from '@ionic/vue'
+import AmountCalculatorModal from '@/components/AmountCalculatorModal.vue'
+import { showToast } from '@/utils/ionicFeedback'
+import { createTransaction, updateTransaction, getTransactionById, getCategoryTree, getAccounts, getPrimaryAccount, getBudgetContext } from '@/api/accounting'
+import { getTenantCurrencies, getTenantDefaultCurrency } from '@/api/currency'
+import { useSyncStore } from '@/store/sync'
+
+const route = useRoute()
+const router = useRouter()
+const syncStore = useSyncStore()
+const id = route.params.id
+const isEdit = !!id
+
+// Same as tenant-admin: YYYY-MM-DD HH:mm:ss for API; ion-datetime uses ISO
+const getCurrentDateTimeString = () => {
+  const d = new Date()
+  const pad = (n) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`
+}
+
+const normalizeTransactionDateTime = (value) => {
+  if (!value) return getCurrentDateTimeString()
+  const s = String(value).trim()
+  if (s.length === 10 && s.match(/^\d{4}-\d{2}-\d{2}$/)) return `${s} 00:00:00`
+  const date = new Date(s)
+  if (Number.isNaN(date.getTime())) return getCurrentDateTimeString()
+  const pad = (n) => String(n).padStart(2, '0')
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`
+}
+
+// ion-datetime value: ISO string (YYYY-MM-DDTHH:mm:ss)
+const dateTimeToIso = (value) => {
+  if (!value) return new Date().toISOString().slice(0, 19)
+  const s = normalizeTransactionDateTime(value)
+  return s.replace(' ', 'T')
+}
+
+const form = reactive({
+  transaction_number: '',
+  title: '',
+  type: 'income',
+  account_id: null,
+  to_account_id: null,
+  category_id: null,
+  amount: 0,
+  currency: 'USD',
+  description: '',
+  transaction_date: getCurrentDateTimeString(),
+  status: 'completed'
+})
+
+const accountOptions = ref([])
+const categoryOptions = ref([])
+const currencyOptions = ref([{ value: 'USD', text: 'USD' }])
+const saving = ref(false)
+const creditWarning = ref(null)
+
+const accountSearchQuery = ref('')
+const toAccountSearchQuery = ref('')
+const categorySearchQuery = ref('')
+
+const showAccountPicker = ref(false)
+const showToAccountPicker = ref(false)
+const showCategoryPicker = ref(false)
+const showCurrencyPicker = ref(false)
+const showDatePicker = ref(false)
+const showStatusPicker = ref(false)
+const showCalculator = ref(false)
+
+function openCalculator() {
+  document.activeElement?.blur?.()
+  showCalculator.value = true
+}
+const budgetContext = ref(null)
+let budgetContextDebounceTimer = null
+
+const statusCols = [{ text: 'Completed', value: 'completed' }, { text: 'Pending', value: 'pending' }, { text: 'Cancelled', value: 'cancelled' }]
+
+const statusText = computed(() => statusCols.find(c => c.value === form.status)?.text || form.status)
+const selectedAccount = computed(() => {
+  if (form.account_id == null) return null
+  const id = Number(form.account_id)
+  return accountOptions.value.find(a => Number(a.id) === id) || null
+})
+const selectedToAccount = computed(() => {
+  if (form.to_account_id == null) return null
+  const id = Number(form.to_account_id)
+  return accountOptions.value.find(a => Number(a.id) === id) || null
+})
+const accountText = computed(() => {
+  const acc = selectedAccount.value
+  if (!acc) return ''
+  const bal = acc.current_balance ?? acc.balance ?? 0
+  return `${acc.name} (${formatCurrency(bal, acc.currency)})`
+})
+const toAccountText = computed(() => {
+  const acc = selectedToAccount.value
+  if (!acc) return ''
+  const bal = acc.current_balance ?? acc.balance ?? 0
+  return `${acc.name} (${formatCurrency(bal, acc.currency)})`
+})
+const categoryText = computed(() => {
+  if (form.category_id == null) return ''
+  const id = Number(form.category_id)
+  return categoryOptions.value.find(c => Number(c.value) === id)?.text || ''
+})
+const currencyText = computed(() => currencyOptions.value.find(c => c.value === form.currency)?.text || form.currency)
+const dateText = computed(() => form.transaction_date || '')
+
+function formatCurrency (amount, currency = 'USD') {
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: currency,
+    minimumFractionDigits: 2
+  }).format(amount ?? 0)
+}
+
+const accountCols = computed(() =>
+  accountOptions.value.map(a => ({
+    text: `${a.name} (${formatCurrency(a.current_balance ?? a.balance, a.currency)})`,
+    value: Number(a.id)
+  }))
+)
+const filteredAccountCols = computed(() => {
+  const q = (accountSearchQuery.value || '').trim().toLowerCase()
+  if (!q) return accountCols.value
+  return accountCols.value.filter(a => a.text.toLowerCase().includes(q))
+})
+const toAccountCols = computed(() => {
+  const fromId = form.account_id != null ? Number(form.account_id) : null
+  return accountOptions.value
+    .filter(a => Number(a.id) !== fromId)
+    .map(a => ({ text: `${a.name} (${formatCurrency(a.current_balance ?? a.balance, a.currency)})`, value: Number(a.id) }))
+})
+const filteredToAccountCols = computed(() => {
+  const q = (toAccountSearchQuery.value || '').trim().toLowerCase()
+  if (!q) return toAccountCols.value
+  return toAccountCols.value.filter(a => a.text.toLowerCase().includes(q))
+})
+const categoryCols = computed(() => categoryOptions.value.map(c => ({ text: c.text, value: c.value })))
+const filteredCategoryCols = computed(() => {
+  const q = (categorySearchQuery.value || '').trim().toLowerCase()
+  if (!q) return categoryCols.value
+  return categoryCols.value.filter(c => c.text.toLowerCase().includes(q))
+})
+const currencyCols = computed(() => currencyOptions.value.map(c => ({ text: c.text, value: c.value })))
+
+function filterActiveCategories (categories) {
+  return (categories || [])
+    .filter(cat => cat.is_active !== false)
+    .map(cat => ({
+      ...cat,
+      children: cat.children?.length ? filterActiveCategories(cat.children) : []
+    }))
+}
+
+function flatten (arr, pre = '') {
+  const out = []
+  for (const c of arr || []) {
+    const t = pre ? `${pre} > ${c.name}` : c.name
+    out.push({ value: Number(c.id), text: t })
+    if (c.children?.length) out.push(...flatten(c.children, t))
+  }
+  return out
+}
+
+async function loadOptions () {
+  try {
+    const [accRes, curRes] = await Promise.all([
+      getAccounts({ is_active: true }),
+      getTenantCurrencies().catch(() => ({ data: { data: [{ code: 'USD', name: 'USD' }] } }))
+    ])
+    if (accRes?.data) accountOptions.value = accRes.data
+    const cur = curRes?.data?.data ?? curRes?.data
+    if (Array.isArray(cur) && cur.length) {
+      currencyOptions.value = cur.map(c => ({ value: c.code, text: `${c.code} - ${c.name || c.code}` }))
+    }
+    const def = await getTenantDefaultCurrency().catch(() => null)
+    const dc = def?.data?.data ?? def?.data
+    if (dc?.code) form.currency = dc.code
+    else if (currencyOptions.value.length && !form.currency) form.currency = currencyOptions.value[0].value
+  } catch (_) {
+    if (!form.currency) form.currency = 'USD'
+  }
+}
+
+async function loadCategories () {
+  if (form.type === 'transfer') {
+    categoryOptions.value = []
+    return
+  }
+  try {
+    const r = await getCategoryTree(form.type)
+    const data = r?.data || r?.data?.data || []
+    const filtered = filterActiveCategories(Array.isArray(data) ? data : [])
+    categoryOptions.value = flatten(filtered)
+  } catch (_) {
+    categoryOptions.value = []
+  }
+}
+
+function handleAccountChange () {
+  creditWarning.value = null
+  if (selectedAccount.value?.currency) {
+    const code = selectedAccount.value.currency
+    if (currencyOptions.value.some(c => c.value === code)) form.currency = code
+  }
+  checkCreditLimit()
+}
+
+function handleToAccountChange () {
+  if (form.type === 'transfer' && selectedToAccount.value?.currency) {
+    const code = selectedToAccount.value.currency
+    if (currencyOptions.value.some(c => c.value === code)) form.currency = code
+  }
+}
+
+function checkCreditLimit () {
+  if (!selectedAccount.value || form.amount == null) {
+    creditWarning.value = null
+    return
+  }
+  const account = selectedAccount.value
+  if ((account.type === 'credit_card' || account.type === 'loan') && account.credit_limit) {
+    const newBalance = account.current_balance - Number(form.amount)
+    if (newBalance < -account.credit_limit) {
+      creditWarning.value = `May exceed credit limit. New balance: ${formatCurrency(newBalance, account.currency)}`
+    } else {
+      creditWarning.value = null
+    }
+  } else {
+    creditWarning.value = null
+  }
+}
+
+async function fetchBudgetContext () {
+  if (form.type !== 'expense' || !form.category_id || !form.transaction_date) {
+    budgetContext.value = null
+    return
+  }
+  try {
+    const dateStr = String(form.transaction_date).split(' ')[0]
+    const res = await getBudgetContext({ date: dateStr, category_id: form.category_id })
+    budgetContext.value = res?.data || null
+  } catch {
+    budgetContext.value = null
+  }
+}
+
+function scheduleBudgetContextFetch () {
+  if (budgetContextDebounceTimer) clearTimeout(budgetContextDebounceTimer)
+  budgetContextDebounceTimer = setTimeout(() => {
+    if (form.type === 'expense') fetchBudgetContext()
+    else budgetContext.value = null
+    budgetContextDebounceTimer = null
+  }, 300)
+}
+
+function selectType (value) {
+  form.type = value
+  if (value === 'transfer') {
+    form.category_id = null
+    if (form.to_account_id != null && form.to_account_id === form.account_id) {
+      form.to_account_id = null
+    }
+  } else {
+    form.category_id = null
+    form.to_account_id = null
+  }
+  loadCategories()
+}
+
+function onTypeChange (e) {
+  const v = e.detail?.value
+  if (v) selectType(v)
+}
+
+function selectAccount (value) {
+  form.account_id = value
+  showAccountPicker.value = false
+  handleAccountChange()
+}
+
+function selectToAccount (value) {
+  form.to_account_id = value
+  showToAccountPicker.value = false
+  handleToAccountChange()
+}
+
+function onAccountPickerDismiss () {
+  showAccountPicker.value = false
+  accountSearchQuery.value = ''
+}
+
+function onToAccountPickerDismiss () {
+  showToAccountPicker.value = false
+  toAccountSearchQuery.value = ''
+}
+
+function onCategoryPickerDismiss () {
+  showCategoryPicker.value = false
+  categorySearchQuery.value = ''
+}
+
+function onDateChange (e) {
+  const v = e.detail.value
+  if (v) form.transaction_date = normalizeTransactionDateTime(v)
+}
+
+watch(() => form.type, (newType, oldType) => {
+  if (newType === oldType) return
+  if (newType !== 'transfer') {
+    loadCategories()
+    form.category_id = null
+    form.to_account_id = null
+  } else {
+    categoryOptions.value = []
+    form.category_id = null
+  }
+})
+
+watch([() => form.amount, () => form.account_id], () => checkCreditLimit())
+
+watch([() => form.type, () => form.category_id, () => form.transaction_date], () => {
+  scheduleBudgetContextFetch()
+})
+
+async function loadEdit () {
+  if (!id) return
+  try {
+    const r = await getTransactionById(id)
+    const t = r?.data || r
+    if (t) {
+      const categoryId = t.category_id != null ? Number(t.category_id) : null
+      const accountId = t.account_id != null ? Number(t.account_id) : null
+      const toAccountId = t.to_account_id != null ? Number(t.to_account_id) : null
+      form.transaction_number = t.transaction_number || ''
+      form.title = t.title || ''
+      form.type = t.type || 'income'
+      form.amount = parseFloat(t.amount) || 0
+      form.currency = t.currency || 'USD'
+      form.description = t.description || ''
+      form.transaction_date = normalizeTransactionDateTime(t.transaction_date)
+      form.status = t.status || 'completed'
+      await loadCategories()
+      form.account_id = accountId
+      form.to_account_id = toAccountId
+      form.category_id = categoryId
+    }
+  } catch (e) {
+    showToast('Failed to load')
+    router.back()
+  }
+}
+
+async function submit () {
+  const amt = Number(form.amount)
+  const txnNum = form.transaction_number?.trim()
+  if (!txnNum) {
+    form.transaction_number = `TXN-${Date.now()}`
+  }
+  if (!form.account_id) {
+    showToast('Select an account')
+    return
+  }
+  if (form.type === 'transfer' && !form.to_account_id) {
+    showToast('Select to account')
+    return
+  }
+  if (form.type !== 'transfer' && !form.category_id) {
+    showToast('Select a category')
+    return
+  }
+  if (amt < 0.01) {
+    showToast('Amount must be greater than 0')
+    return
+  }
+  saving.value = true
+  try {
+    const body = {
+      transaction_number: (form.transaction_number || '').trim() || `TXN-${Date.now()}`,
+      title: form.title?.trim() || null,
+      type: form.type,
+      account_id: form.account_id,
+      to_account_id: form.type === 'transfer' ? form.to_account_id : null,
+      category_id: form.type !== 'transfer' ? form.category_id : null,
+      amount: amt,
+      currency: form.currency,
+      description: form.description?.trim() || null,
+      transaction_date: normalizeTransactionDateTime(form.transaction_date),
+      status: form.status
+    }
+    const res = isEdit ? await updateTransaction(id, body) : await createTransaction(body)
+    if (res?.queued) {
+      showToast('Saved locally. Will sync when online.')
+      syncStore.setLastQueuedTransaction({ id: res.id, payload: body })
+    } else {
+      showToast(isEdit ? 'Updated' : 'Created')
+    }
+    router.back()
+  } catch (e) {
+    showToast(e?.message || 'Failed')
+  } finally {
+    saving.value = false
+  }
+}
+
+const validTypes = ['income', 'expense', 'transfer']
+onMounted(async () => {
+  await loadOptions()
+  if (isEdit) {
+    await loadEdit()
+  } else {
+    const queryType = route.query.type
+    const queryAccountId = route.query.account_id
+    if (queryType && validTypes.includes(queryType)) form.type = queryType
+    form.transaction_number = `TXN-${Date.now()}`
+    form.transaction_date = getCurrentDateTimeString()
+    form.amount = 0
+    await loadCategories()
+    const accountId = queryAccountId != null ? Number(queryAccountId) : null
+    if (accountId != null && accountOptions.value.some(a => Number(a.id) === accountId)) {
+      form.account_id = accountId
+      handleAccountChange()
+    } else {
+      try {
+        const res = await getPrimaryAccount()
+        const primaryId = res?.data?.account_id ?? null
+        if (primaryId != null && accountOptions.value.some(a => a.id === primaryId)) {
+          form.account_id = primaryId
+          handleAccountChange()
+        }
+      } catch (_) {}
+    }
+  }
+})
+</script>
+
+<style scoped>
+ion-content { --background: #f7f8fa; }
+.balance-note { --min-height: 32px; }
+.balance-note ion-note { font-size: 12px; }
+.positive { color: var(--ion-color-success); }
+.negative { color: var(--ion-color-danger); }
+.credit-warning ion-note { font-size: 12px; }
+.budget-context-item { --min-height: 32px; }
+.budget-context-item ion-note { font-size: 12px; }
+ion-segment { width: 100%; }
+ion-segment-button { flex: 1; min-width: 0; }
+/* Transaction type colors (matches tenant-admin) */
+.type-income.segment-button-checked {
+  --color: white;
+  --indicator-color: var(--ion-color-success);
+}
+.type-expense.segment-button-checked {
+  --color: white;
+  --indicator-color: var(--ion-color-danger);
+}
+.type-transfer.segment-button-checked {
+  --color: white;
+  --indicator-color: var(--ion-color-primary);
+}
+</style>
