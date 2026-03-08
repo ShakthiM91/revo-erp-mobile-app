@@ -5,6 +5,7 @@
     </ion-menu>
     <ion-router-outlet id="main" />
     <PwaInstallBanner />
+    <PwaUpdateBanner />
   </ion-app>
 </template>
 
@@ -12,6 +13,7 @@
 import { IonApp, IonMenu, IonRouterOutlet } from '@ionic/vue'
 import AppMenuContent from '@/components/AppMenu/AppMenuContent.vue'
 import PwaInstallBanner from '@/components/PwaInstallBanner.vue'
+import PwaUpdateBanner from '@/components/PwaUpdateBanner.vue'
 </script>
 
 <style>
