@@ -16,8 +16,25 @@
         <ion-list lines="inset">
           <ion-item>
             <ion-label position="stacked">Title</ion-label>
-            <ion-input v-model="form.title" placeholder="Title for the transaction" />
+            <ion-input
+              v-model="form.title"
+              placeholder="Title for the transaction"
+              @ionInput="onTitleInput"
+              @ionBlur="onTitleBlur"
+              autocomplete="off"
+            />
           </ion-item>
+          <div v-if="showTitleSuggestions" class="title-suggestions">
+            <div
+              v-for="txn in titleSuggestions"
+              :key="txn.id"
+              class="title-suggestion-item"
+              @mousedown.prevent="applyTitleSuggestion(txn)"
+            >
+              <span class="suggestion-title">{{ txn.title }}</span>
+              <span class="suggestion-meta">{{ txn.type }} · {{ categoryOptions.find(c => c.value === Number(txn.category_id))?.text || '' }}</span>
+            </div>
+          </div>
           <ion-item>
             <ion-label position="stacked">Type</ion-label>
             <ion-segment :value="form.type" @ionChange="onTypeChange($event)">
@@ -66,6 +83,18 @@
             <ion-label position="stacked">Category</ion-label>
             <ion-note slot="end">{{ categoryText || 'Select' }}</ion-note>
           </ion-item>
+          <div v-if="form.type !== 'transfer' && categorySuggestions.length" class="category-suggestions">
+            <span class="category-suggestions-label">Suggested</span>
+            <div class="category-chips">
+              <button
+                v-for="cat in categorySuggestions"
+                :key="cat.id"
+                class="category-chip"
+                :class="{ active: form.category_id === cat.id }"
+                @click="form.category_id = cat.id"
+              >{{ cat.text }}</button>
+            </div>
+          </div>
           <ion-item v-if="form.type === 'expense' && budgetContext && budgetContext.remaining != null" class="budget-context-item">
             <ion-note :color="budgetContext.remaining >= 0 ? 'success' : 'danger'">
               {{ budgetContext.remaining >= 0
@@ -205,7 +234,7 @@ import {
 } from '@ionic/vue'
 import AmountCalculatorModal from '@/components/AmountCalculatorModal.vue'
 import { showToast } from '@/utils/ionicFeedback'
-import { createTransaction, updateTransaction, getTransactionById, getCategoryTree, getAccounts, getPrimaryAccount, getBudgetContext } from '@/api/accounting'
+import { createTransaction, updateTransaction, getTransactionById, getTransactions, getCategoryTree, getAccounts, getPrimaryAccount, getBudgetContext } from '@/api/accounting'
 import { getTenantCurrencies, getTenantDefaultCurrency } from '@/api/currency'
 import { useSyncStore } from '@/store/sync'
 
@@ -258,10 +287,13 @@ const categoryOptions = ref([])
 const currencyOptions = ref([{ value: 'USD', text: 'USD' }])
 const saving = ref(false)
 const creditWarning = ref(null)
+const recentTransactions = ref([])
 
 const accountSearchQuery = ref('')
 const toAccountSearchQuery = ref('')
 const categorySearchQuery = ref('')
+const titleSuggestions = ref([])
+const showTitleSuggestions = ref(false)
 
 const showAccountPicker = ref(false)
 const showToAccountPicker = ref(false)
@@ -451,6 +483,91 @@ async function fetchBudgetContext () {
   }
 }
 
+async function fetchRecentTransactions () {
+  try {
+    const r = await getTransactions({ per_page: 100, sort: '-transaction_date' })
+    const data = r?.data?.data ?? r?.data ?? []
+    recentTransactions.value = Array.isArray(data) ? data : []
+  } catch (_) {
+    recentTransactions.value = []
+  }
+}
+
+let titleDebounceTimer = null
+function onTitleInput () {
+  if (titleDebounceTimer) clearTimeout(titleDebounceTimer)
+  titleDebounceTimer = setTimeout(() => {
+    const q = (form.title || '').trim().toLowerCase()
+    if (q.length < 2) {
+      titleSuggestions.value = []
+      showTitleSuggestions.value = false
+      return
+    }
+    const seen = new Set()
+    const matches = []
+    for (const t of recentTransactions.value) {
+      const titleLower = (t.title || '').toLowerCase()
+      if (!titleLower || !titleLower.includes(q)) continue
+      if (seen.has(titleLower)) continue
+      seen.add(titleLower)
+      matches.push(t)
+      if (matches.length >= 5) break
+    }
+    titleSuggestions.value = matches
+    showTitleSuggestions.value = matches.length > 0
+    titleDebounceTimer = null
+  }, 300)
+}
+
+function applyTitleSuggestion (txn) {
+  form.title = txn.title || ''
+  form.type = txn.type || form.type
+  form.amount = parseFloat(txn.amount) || 0
+  form.currency = txn.currency || form.currency
+  form.description = txn.description || ''
+  const accountId = txn.account_id != null ? Number(txn.account_id) : null
+  const categoryId = txn.category_id != null ? Number(txn.category_id) : null
+  showTitleSuggestions.value = false
+  titleSuggestions.value = []
+  loadCategories().then(() => {
+    if (accountId != null && accountOptions.value.some(a => Number(a.id) === accountId)) {
+      form.account_id = accountId
+      handleAccountChange()
+    }
+    if (categoryId != null) form.category_id = categoryId
+  })
+}
+
+function onTitleBlur () {
+  setTimeout(() => { showTitleSuggestions.value = false }, 200)
+}
+
+const categorySuggestions = computed(() => {
+  if (form.type === 'transfer' || !recentTransactions.value.length || !categoryOptions.value.length) return []
+  const now = new Date()
+  const currentDay = now.getDay()
+  const currentHour = now.getHours()
+  const freq = {}
+  for (const t of recentTransactions.value) {
+    if (t.type !== form.type || !t.category_id) continue
+    const d = new Date(t.transaction_date)
+    if (Number.isNaN(d.getTime())) continue
+    const dayMatch = d.getDay() === currentDay
+    const hourDiff = Math.abs(d.getHours() - currentHour)
+    if (!dayMatch && hourDiff > 2) continue
+    const key = Number(t.category_id)
+    freq[key] = (freq[key] || 0) + (dayMatch ? 2 : 1)
+  }
+  return Object.entries(freq)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 5)
+    .map(([id]) => {
+      const cat = categoryOptions.value.find(c => c.value === Number(id))
+      return cat ? { id: Number(id), text: cat.text } : null
+    })
+    .filter(Boolean)
+})
+
 function scheduleBudgetContextFetch () {
   if (budgetContextDebounceTimer) clearTimeout(budgetContextDebounceTimer)
   budgetContextDebounceTimer = setTimeout(() => {
@@ -622,6 +739,7 @@ onMounted(async () => {
     form.transaction_date = getCurrentDateTimeString()
     form.amount = 0
     await loadCategories()
+    fetchRecentTransactions()
     const accountId = queryAccountId != null ? Number(queryAccountId) : null
     if (accountId != null && accountOptions.value.some(a => Number(a.id) === accountId)) {
       form.account_id = accountId
@@ -651,6 +769,68 @@ ion-content { --background: #f7f8fa; }
 .budget-context-item ion-note { font-size: 12px; }
 ion-segment { width: 100%; }
 ion-segment-button { flex: 1; min-width: 0; }
+
+/* Title suggestions dropdown */
+.title-suggestions {
+  background: var(--ion-background-color, #fff);
+  border: 1px solid var(--ion-color-light-shade, #d7d8da);
+  border-radius: 8px;
+  margin: 0 16px 8px;
+  overflow: hidden;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+  z-index: 100;
+  position: relative;
+}
+.title-suggestion-item {
+  display: flex;
+  flex-direction: column;
+  padding: 10px 14px;
+  cursor: pointer;
+  border-bottom: 1px solid var(--ion-color-light, #f4f5f8);
+  gap: 2px;
+}
+.title-suggestion-item:last-child { border-bottom: none; }
+.title-suggestion-item:active { background: var(--ion-color-light, #f4f5f8); }
+.suggestion-title { font-size: 0.9rem; font-weight: 500; color: var(--ion-text-color, #000); }
+.suggestion-meta { font-size: 0.75rem; color: var(--ion-color-medium, #92949c); text-transform: capitalize; }
+
+/* Category suggestions */
+.category-suggestions {
+  padding: 8px 16px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.category-suggestions-label {
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--ion-color-medium, #92949c);
+}
+.category-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.category-chip {
+  display: inline-block;
+  padding: 5px 12px;
+  border-radius: 20px;
+  border: 1.5px solid var(--ion-color-primary, #3880ff);
+  background: transparent;
+  color: var(--ion-color-primary, #3880ff);
+  font-size: 0.8rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+  -webkit-tap-highlight-color: transparent;
+}
+.category-chip.active {
+  background: var(--ion-color-primary, #3880ff);
+  color: var(--ion-color-primary-contrast, #fff);
+}
+.category-chip:active { opacity: 0.75; }
 /* Transaction type colors (matches tenant-admin) */
 .type-income.segment-button-checked {
   --color: white;

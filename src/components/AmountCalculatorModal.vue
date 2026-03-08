@@ -19,7 +19,7 @@
         <span class="calc-cell-placeholder" />
         <span class="calc-cell-placeholder" />
         <span class="calc-cell-placeholder" />
-        <span class="calc-cell-placeholder" />
+        <ion-button class="calc-btn calc-000" @click="append000">000</ion-button>
         <ion-button class="calc-btn calc-clear" @click="clear">C</ion-button>
         <ion-button class="calc-btn calc-backspace" @click="backspace" title="Backspace">⌫</ion-button>
         <ion-button class="calc-btn calc-op" @click="append('/')">/</ion-button>
@@ -171,6 +171,12 @@ function append00() {
   append('0')
 }
 
+function append000() {
+  append('0')
+  append('0')
+  append('0')
+}
+
 /** Evaluate current display and update display with result; do not close or emit. */
 function onEquals() {
   error.value = ''
@@ -263,4 +269,5 @@ watch(() => props.modelValue, (v) => {
 .calc-eq { --background: var(--ion-color-primary); --color: var(--ion-color-primary-contrast); }
 .calc-clear { --background: var(--ion-color-medium); --color: var(--ion-color-medium-contrast); }
 .calc-backspace { font-size: 1.35rem; }
+.calc-000 { font-size: 1rem; }
 </style>
