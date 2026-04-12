@@ -96,12 +96,24 @@
             </div>
           </div>
           <ion-item v-if="form.type === 'expense' && budgetContext && budgetContext.remaining != null" class="budget-context-item">
-            <ion-note :color="budgetContext.remaining >= 0 ? 'success' : 'danger'">
-              {{ budgetContext.remaining >= 0
-                ? `Budget (${budgetContext.plan_name}, ${budgetContext.period_label}): ${formatCurrency(budgetContext.remaining, budgetContext.currency)} remaining`
-                : `Over budget by ${formatCurrency(-budgetContext.remaining, budgetContext.currency)}`
-              }}
-            </ion-note>
+            <ion-label class="ion-text-wrap">
+              <ion-note :color="budgetContext.remaining >= 0 ? 'success' : 'danger'">
+                {{ budgetContext.remaining >= 0
+                  ? `Parent budget (${budgetContext.plan_name}, ${budgetContext.period_label}): ${formatCurrency(budgetContext.remaining, budgetContext.currency)} remaining`
+                  : `Parent over by ${formatCurrency(-budgetContext.remaining, budgetContext.currency)}`
+                }}
+              </ion-note>
+              <ion-note
+                v-if="budgetContext.sub_remaining != null"
+                class="budget-sub-note"
+                :color="budgetContext.sub_remaining >= 0 ? 'success' : 'danger'"
+              >
+                {{ budgetContext.sub_remaining >= 0
+                  ? `Sub-category: ${formatCurrency(budgetContext.sub_remaining, budgetContext.currency)} remaining`
+                  : `Sub-category over by ${formatCurrency(-budgetContext.sub_remaining, budgetContext.currency)}`
+                }}
+              </ion-note>
+            </ion-label>
           </ion-item>
           <ion-item button detail @click="openCalculator">
             <ion-label position="stacked">Amount</ion-label>

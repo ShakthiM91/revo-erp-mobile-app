@@ -44,70 +44,54 @@
         </ion-item>
       </ion-list>
 
-      <h4 class="ion-padding-start">Budget by Parent Category</h4>
-      <p class="ion-padding-start ion-padding-end hint-text">Add categories to budget. Removed categories' expenses are excluded from reports.</p>
-      <div class="ion-padding-start ion-padding-end ion-padding-bottom">
-        <ion-button fill="outline" size="small" @click="openAddCategoryModal">
-          Add category
-        </ion-button>
-      </div>
+      <h4 class="ion-padding-start">Budget by category</h4>
+      <p class="ion-padding-start ion-padding-end hint-text">
+        Enter an amount to include a category; leave 0 to exclude. Sub-categories only will get a calculated parent on save.
+      </p>
+      <ion-note v-if="childrenExceedParentWarning" color="warning" class="ion-padding-start ion-padding-end warn-note">
+        {{ childrenExceedParentWarning }}
+      </ion-note>
 
-      <ion-modal :is-open="addCategoryModalOpen" @didDismiss="onAddCategoryModalDismiss" @ionModalDidPresent="focusModalSearch">
-        <ion-header>
-          <ion-toolbar>
-            <ion-title>Add categories to budget</ion-title>
-            <ion-buttons slot="end">
-              <ion-button @click="onAddCategoryModalDismiss">Done</ion-button>
-            </ion-buttons>
-          </ion-toolbar>
-          <ion-toolbar>
-            <ion-searchbar
-              ref="addCategorySearchRef"
-              v-model="addCategorySearchQuery"
-              placeholder="Search categories..."
-              :debounce="150"
-            />
-          </ion-toolbar>
-        </ion-header>
-        <ion-content>
-          <ion-list v-if="filteredCategoriesToAdd.length > 0" lines="inset">
-            <ion-item
-              v-for="cat in filteredCategoriesToAdd"
-              :key="cat.id"
-              button
-              @click="addCategoryFromModal(cat.id)"
-            >
-              <ion-label>{{ cat.name }}</ion-label>
-              <ion-icon slot="end" :icon="addOutline" />
-            </ion-item>
-          </ion-list>
-          <div v-else class="add-category-empty">
-            <ion-note>
-              {{ availableCategoriesToAdd.length === 0
-                ? 'All categories have been added'
-                : `No categories match "${addCategorySearchQuery}"`
-              }}
-            </ion-note>
-          </div>
-        </ion-content>
-      </ion-modal>
+      <ion-toolbar>
+        <ion-searchbar
+          v-model="categoryFilterSearch"
+          placeholder="Filter categories..."
+          :debounce="200"
+        />
+      </ion-toolbar>
+
       <ion-list lines="inset">
-        <ion-item v-for="item in categoryItems" :key="item.category_id">
-          <ion-label>{{ item.category_name }}</ion-label>
-          <ion-input
-            v-model.number="item.amount"
-            type="number"
-            min="0"
-            step="0.01"
-            placeholder="0"
-            style="max-width: 90px; text-align: right"
-            @ionFocus="selectAmountOnFocus"
-          />
-          <ion-toggle v-model="item.is_divertable" slot="end">Divert</ion-toggle>
-          <ion-button fill="clear" color="danger" size="small" slot="end" @click="removeCategory(item)">
-            <ion-icon :icon="trashOutline" />
-          </ion-button>
-        </ion-item>
+        <template v-for="row in filteredDisplayRows" :key="row.category_id">
+          <ion-item :class="{ 'row-child': row._rowKind === 'child' }">
+            <ion-label class="ion-text-wrap">
+              <p v-if="row._rowKind === 'child'" class="child-prefix">—</p>
+              <h2>
+                {{ row.category_name }}
+                <ion-badge v-if="budgetState(row.category_id).is_system_calculated" color="medium">Calculated</ion-badge>
+              </h2>
+            </ion-label>
+            <ion-input
+              v-model.number="budgetState(row.category_id).amount"
+              type="number"
+              min="0"
+              step="0.01"
+              placeholder="0"
+              class="amount-input"
+              :readonly="budgetState(row.category_id).is_system_calculated"
+              @ionFocus="selectAmountOnFocus"
+            />
+            <ion-toggle
+              slot="end"
+              v-model="budgetState(row.category_id).is_divertable"
+              :disabled="
+                budgetState(row.category_id).is_system_calculated ||
+                  (parseFloat(budgetState(row.category_id).amount) || 0) <= 0
+              "
+            >
+              Divert
+            </ion-toggle>
+          </ion-item>
+        </template>
       </ion-list>
 
       <div class="ion-padding">
@@ -138,12 +122,10 @@ import {
   IonSelectOption,
   IonToggle,
   IonButton,
-  IonModal,
   IonSearchbar,
-  IonIcon,
+  IonBadge,
   IonNote
 } from '@ionic/vue'
-import { addOutline, trashOutline } from 'ionicons/icons'
 import { showToast } from '@/utils/ionicFeedback'
 import { getCategories, getBudgetById, createBudget, updateBudget } from '@/api/accounting'
 import { getTenantCurrencies, getTenantDefaultCurrency } from '@/api/currency'
@@ -161,29 +143,108 @@ const form = reactive({
   currency: ''
 })
 const expenseCategories = ref([])
-const categoryItems = ref([])
-const addCategoryModalOpen = ref(false)
-const addCategorySearchQuery = ref('')
-const addCategorySearchRef = ref(null)
+const budgetByCategoryId = reactive({})
+const categoryFilterSearch = ref('')
 const currencyOptions = ref([])
 const saving = ref(false)
 
-const parentExpenseCategories = computed(() =>
-  (expenseCategories.value || []).filter((c) => c.type === 'expense' && c.parent_id == null)
-)
+function budgetState(categoryId) {
+  const id = Number(categoryId)
+  if (!budgetByCategoryId[id]) {
+    budgetByCategoryId[id] = { amount: 0, is_divertable: false, is_system_calculated: false }
+  }
+  return budgetByCategoryId[id]
+}
 
-const availableCategoriesToAdd = computed(() => {
-  const idsInTable = new Set(categoryItems.value.map((i) => i.category_id))
-  return parentExpenseCategories.value.filter((c) => !idsInTable.has(c.id))
+function initBudgetStateDefaults() {
+  for (const c of expenseCategories.value || []) {
+    if (c.type !== 'expense') continue
+    const id = Number(c.id)
+    budgetByCategoryId[id] = { amount: 0, is_divertable: false, is_system_calculated: false }
+  }
+}
+
+function applyPlanItemsToState(items = []) {
+  for (const i of items) {
+    const id = Number(i.category_id)
+    if (!(id in budgetByCategoryId)) continue
+    budgetByCategoryId[id].amount = parseFloat(i.amount) || 0
+    budgetByCategoryId[id].is_divertable = Boolean(i.is_divertable)
+    budgetByCategoryId[id].is_system_calculated = Boolean(i.is_system_calculated)
+  }
+}
+
+const displayTreeRows = computed(() => {
+  const cats = (expenseCategories.value || []).filter((c) => c.type === 'expense')
+  const parents = cats.filter((c) => c.parent_id == null).sort((a, b) => (a.name || '').localeCompare(b.name || ''))
+  const rows = []
+  const placed = new Set()
+  for (const p of parents) {
+    const pid = Number(p.id)
+    rows.push({ category_id: pid, category_name: p.name, parent_id: null, _rowKind: 'parent' })
+    placed.add(pid)
+    const kids = cats
+      .filter((c) => Number(c.parent_id) === pid)
+      .sort((a, b) => (a.name || '').localeCompare(b.name || ''))
+    for (const c of kids) {
+      rows.push({ category_id: Number(c.id), category_name: c.name, parent_id: pid, _rowKind: 'child' })
+      placed.add(Number(c.id))
+    }
+  }
+  for (const c of cats) {
+    const id = Number(c.id)
+    if (placed.has(id)) continue
+    rows.push({
+      category_id: id,
+      category_name: c.name,
+      parent_id: c.parent_id != null ? Number(c.parent_id) : null,
+      _rowKind: 'orphan'
+    })
+  }
+  return rows
 })
 
-const filteredCategoriesToAdd = computed(() => {
-  const q = (addCategorySearchQuery.value || '').trim().toLowerCase()
-  if (!q) return availableCategoriesToAdd.value
-  return availableCategoriesToAdd.value.filter((c) =>
-    (c.name || '').toLowerCase().includes(q)
-  )
+const filteredDisplayRows = computed(() => {
+  const q = (categoryFilterSearch.value || '').trim().toLowerCase()
+  if (!q) return displayTreeRows.value
+  return displayTreeRows.value.filter((row) => (row.category_name || '').toLowerCase().includes(q))
 })
+
+const childrenExceedParentWarning = computed(() => {
+  const msgs = []
+  const cats = (expenseCategories.value || []).filter((c) => c.type === 'expense')
+  const parents = cats.filter((c) => c.parent_id == null)
+  for (const p of parents) {
+    const pid = Number(p.id)
+    const pst = budgetByCategoryId[pid]
+    if (!pst || pst.is_system_calculated) continue
+    const pb = parseFloat(pst.amount) || 0
+    if (pb <= 0) continue
+    const sum = cats
+      .filter((c) => Number(c.parent_id) === pid)
+      .reduce((s, c) => s + (parseFloat(budgetByCategoryId[Number(c.id)]?.amount) || 0), 0)
+    if (sum > pb) {
+      msgs.push(
+        `Under "${p.name}", sub-categories total ${sum.toFixed(2)} vs parent ${pb.toFixed(2)}.`
+      )
+    }
+  }
+  return msgs.length ? msgs.join(' ') : ''
+})
+
+function buildItemsForApi() {
+  const out = []
+  for (const c of expenseCategories.value || []) {
+    if (c.type !== 'expense') continue
+    const id = Number(c.id)
+    const st = budgetByCategoryId[id]
+    if (!st || st.is_system_calculated) continue
+    const amt = parseFloat(st.amount) || 0
+    if (amt <= 0) continue
+    out.push({ category_id: id, amount: amt, is_divertable: !!st.is_divertable })
+  }
+  return out
+}
 
 function normalizeDateForInput(val) {
   if (!val) return ''
@@ -198,70 +259,17 @@ function normalizeDateForInput(val) {
   return `${y}-${mo}-${day}`
 }
 
-function buildCategoryItemsFromExisting(categories, existingItems = []) {
-  const catMap = new Map((categories || []).map((c) => [c.id, c]))
-  return (existingItems || [])
-    .filter((i) => catMap.has(i.category_id))
-    .map((i) => {
-      const cat = catMap.get(i.category_id)
-      return {
-        category_id: i.category_id,
-        category_name: cat?.name || 'Unknown',
-        amount: parseFloat(i.amount) || 0,
-        is_divertable: Boolean(i.is_divertable)
-      }
-    })
-}
-
-function openAddCategoryModal(e) {
-  e?.currentTarget?.blur()
-  addCategoryModalOpen.value = true
-}
-
-function focusModalSearch() {
-  nextTick(() => {
-    const el = addCategorySearchRef.value?.$el
-    if (typeof el?.setFocus === 'function') {
-      el.setFocus()
-    } else {
-      const input = el?.shadowRoot?.querySelector('input') ?? el?.querySelector('input')
-      input?.focus()
-    }
-  })
-}
-
-function onAddCategoryModalDismiss() {
-  addCategoryModalOpen.value = false
-  addCategorySearchQuery.value = ''
-}
-
-function addCategoryFromModal(categoryId) {
-  const id = categoryId != null ? Number(categoryId) : null
-  if (id == null || isNaN(id)) return
-  const cat = parentExpenseCategories.value.find((c) => Number(c.id) === id)
-  if (!cat || categoryItems.value.some((i) => i.category_id === id)) return
-  categoryItems.value.push({
-    category_id: cat.id,
-    category_name: cat.name,
-    amount: 0,
-    is_divertable: false
-  })
-}
-
 function selectAmountOnFocus(ev) {
   const el = ev?.target?.$el ?? ev?.target
   const input = el?.shadowRoot?.querySelector('input') ?? el?.querySelector('input')
   nextTick(() => input?.select?.())
 }
 
-function removeCategory(row) {
-  categoryItems.value = categoryItems.value.filter((i) => i.category_id !== row.category_id)
-}
-
 async function loadCategories() {
   try {
     const res = await getCategories('expense')
     expenseCategories.value = res?.data || []
+    initBudgetStateDefaults()
   } catch (e) {
     showToast('Failed to load categories')
   }
@@ -284,22 +292,21 @@ async function loadPlan() {
     form.currency = data.currency || 'USD'
     const cats = expenseCategories.value.length > 0 ? expenseCategories.value : (await getCategories('expense'))?.data || []
     if (expenseCategories.value.length === 0) expenseCategories.value = cats
-    categoryItems.value = buildCategoryItemsFromExisting(cats, data.items || [])
+    initBudgetStateDefaults()
+    applyPlanItemsToState(data.items || [])
   } catch (e) {
     showToast('Failed to load')
   }
 }
 
 async function handleSubmit() {
-  const items = categoryItems.value
-    .filter((i) => i.amount > 0)
-    .map((i) => ({ category_id: i.category_id, amount: parseFloat(i.amount), is_divertable: !!i.is_divertable }))
   if (!form.name || !form.start_date || !form.end_date) {
     showToast('Fill required fields')
     return
   }
+  const items = buildItemsForApi()
   if (items.length === 0) {
-    showToast('Add at least one category')
+    showToast('Set at least one category to a positive amount')
     return
   }
   saving.value = true
@@ -357,13 +364,30 @@ onMounted(async () => {
   margin-top: 0;
   margin-bottom: 8px;
 }
-
-.add-category-empty {
-  padding: 32px 20px;
-  text-align: center;
+.warn-note {
+  display: block;
+  font-size: 13px;
+  margin-bottom: 8px;
+  white-space: normal;
 }
-
-.add-category-empty ion-note {
-  font-size: 14px;
+.row-child {
+  --padding-start: 20px;
+}
+.child-prefix {
+  font-size: 12px;
+  color: var(--ion-color-medium);
+  margin: 0 0 2px 0;
+}
+.amount-input {
+  max-width: 88px;
+  text-align: right;
+}
+ion-badge {
+  vertical-align: middle;
+  margin-left: 6px;
+}
+ion-toolbar {
+  --background: transparent;
+  --border-width: 0;
 }
 </style>

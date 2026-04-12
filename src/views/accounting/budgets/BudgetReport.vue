@@ -97,28 +97,47 @@
               <span :class="(periodReport.variance || 0) >= 0 ? 'success' : 'danger'">{{ formatCurrency(periodReport.variance) }}</span>
             </div>
             <ion-list lines="inset">
-              <ion-item v-for="item in (periodReport.items || [])" :key="item.category_id" button @click="openBreakdown(item)">
-                <ion-label>
-                  <h2>{{ item.category_name }}</h2>
-                  <p>
-                    Actual: {{ formatCurrency(item.actual) }} | Budget: {{ formatCurrency(item.budget) }} | Diff:
-                    <span :class="(item.variance || 0) >= 0 ? 'success' : 'danger'">{{ formatCurrency(item.variance) }}</span>
-                  </p>
-                  <div v-if="item.budget > 0" class="percent-row">
-                    <ion-progress-bar
-                      :value="Math.min(getPercentUsed(item) / 100, 1)"
-                      :color="getPercentUsed(item) > 100 ? 'danger' : 'success'"
-                    />
-                    <span :class="['percent-text', getPercentUsed(item) > 100 ? 'danger' : 'success']">
-                      {{ getPercentUsed(item).toFixed(1) }}%
-                    </span>
-                  </div>
-                </ion-label>
-                <ion-note slot="end">
-                  <ion-badge v-if="item.is_divertable" color="medium">Divert</ion-badge>
-                  <ion-icon name="chevron-forward" class="chevron-icon" />
-                </ion-note>
-              </ion-item>
+              <template v-for="item in (periodReport.items || [])" :key="item.category_id">
+                <ion-item button @click="openBreakdown(item)">
+                  <ion-label>
+                    <h2>{{ item.category_name }}</h2>
+                    <p>
+                      Actual: {{ formatCurrency(item.actual) }} | Budget: {{ formatCurrency(item.budget) }} | Diff:
+                      <span :class="(item.variance || 0) >= 0 ? 'success' : 'danger'">{{ formatCurrency(item.variance) }}</span>
+                    </p>
+                    <div v-if="item.budget > 0" class="percent-row">
+                      <ion-progress-bar
+                        :value="Math.min(getPercentUsed(item) / 100, 1)"
+                        :color="getPercentUsed(item) > 100 ? 'danger' : 'success'"
+                      />
+                      <span :class="['percent-text', getPercentUsed(item) > 100 ? 'danger' : 'success']">
+                        {{ getPercentUsed(item).toFixed(1) }}%
+                      </span>
+                    </div>
+                  </ion-label>
+                  <ion-note slot="end">
+                    <ion-badge v-if="item.is_divertable" color="medium">Divert</ion-badge>
+                    <ion-icon name="chevron-forward" class="chevron-icon" />
+                  </ion-note>
+                </ion-item>
+                <ion-list v-if="item.sub_items?.length" lines="none" class="sub-nested ion-padding-start">
+                  <ion-item v-for="s in item.sub_items" :key="s.category_id" lines="none">
+                    <ion-label class="ion-text-wrap">
+                      <p class="sub-cat-name">— {{ s.category_name }}</p>
+                      <p class="sub-cat-stats">
+                        Budget {{ formatCurrency(s.budget) }} · Actual {{ formatCurrency(s.actual) }} ·
+                        <span :class="(s.variance || 0) >= 0 ? 'success' : 'danger'">{{ formatCurrency(s.variance) }}</span>
+                      </p>
+                      <ion-progress-bar
+                        v-if="s.budget > 0"
+                        class="sub-progress"
+                        :value="Math.min((s.actual / s.budget), 1)"
+                        :color="s.actual > s.budget ? 'danger' : 'success'"
+                      />
+                    </ion-label>
+                  </ion-item>
+                </ion-list>
+              </template>
             </ion-list>
             <ion-modal :is-open="breakdownModalOpen" @didDismiss="breakdownModalOpen = false">
               <ion-header>
@@ -133,13 +152,22 @@
                 <ion-spinner v-if="breakdownLoading" class="ion-text-center" />
                 <ion-list v-else-if="breakdownData.length > 0" lines="inset">
                   <ion-item v-for="row in breakdownData" :key="row.category_id">
-                    <ion-label>{{ row.category_name }}</ion-label>
-                    <ion-note slot="end">
-                      {{ formatCurrency(row.actual) }}
-                      <span v-if="breakdownParentActual > 0" class="percent-badge">
-                        ({{ ((row.actual / breakdownParentActual) * 100).toFixed(1) }}%)
-                      </span>
-                    </ion-note>
+                    <ion-label class="ion-text-wrap">
+                      <h3>{{ row.category_name }}</h3>
+                      <p>
+                        Budget {{ formatCurrency(row.budget) }} · Actual {{ formatCurrency(row.actual) }} · Rem.
+                        <span :class="(row.remaining || 0) >= 0 ? 'success' : 'danger'">{{ formatCurrency(row.remaining) }}</span>
+                      </p>
+                      <ion-progress-bar
+                        v-if="row.budget > 0"
+                        class="sub-progress"
+                        :value="Math.min(row.actual / row.budget, 1)"
+                        :color="row.actual > row.budget ? 'danger' : 'success'"
+                      />
+                      <p v-if="breakdownParentActual > 0" class="percent-badge">
+                        {{ ((row.actual / breakdownParentActual) * 100).toFixed(1) }}% of parent actual
+                      </p>
+                    </ion-label>
                   </ion-item>
                 </ion-list>
                 <ion-note v-else class="empty-note">No child category spend in this period</ion-note>
@@ -603,7 +631,23 @@ ion-segment {
 }
 .percent-badge {
   font-size: 12px;
-  margin-left: 4px;
+  margin-top: 6px;
   color: var(--ion-color-medium);
+}
+.sub-nested {
+  margin-bottom: 8px;
+}
+.sub-cat-name {
+  font-size: 14px;
+  margin: 0 0 4px 0;
+}
+.sub-cat-stats {
+  font-size: 12px;
+  color: var(--ion-color-medium);
+  margin: 0;
+}
+.sub-progress {
+  margin-top: 6px;
+  height: 6px;
 }
 </style>
