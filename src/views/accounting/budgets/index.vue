@@ -44,7 +44,10 @@
           <ion-item button @click="$router.push(`/budgets/${row.id}/report`)">
             <ion-label>
               <h2>{{ row.name }}</h2>
-              <p>{{ formatDateRange(row.start_date, row.end_date) }} · {{ row.period_type }}</p>
+              <p>
+                {{ formatDateRange(row.start_date, row.end_date) }} · {{ row.period_type }}
+                <template v-if="isRecurringOn(row)"> · Recurring</template>
+              </p>
             </ion-label>
             <ion-badge :color="statusColor(row.status)" slot="end">{{ row.status }}</ion-badge>
           </ion-item>
@@ -53,6 +56,13 @@
             <ion-item-option color="medium" @click="onHistory(row)">History</ion-item-option>
             <ion-item-option v-if="row.status === 'active' || row.status === 'draft'" color="primary" @click="goToEdit(row)">Edit</ion-item-option>
             <ion-item-option v-if="row.status === 'draft'" color="success" @click="onActivate(row)">Activate</ion-item-option>
+            <ion-item-option
+              v-if="row.status === 'active' && isRecurringOn(row)"
+              color="tertiary"
+              @click="onGenerateNext(row)"
+            >
+              Next draft
+            </ion-item-option>
             <ion-item-option v-if="row.status === 'active'" color="warning" @click="onAbandon(row)">Abandon</ion-item-option>
             <ion-item-option color="danger" @click="onDelete(row)">Delete</ion-item-option>
           </ion-item-options>
@@ -118,7 +128,7 @@ import {
 import { addOutline, menuOutline } from 'ionicons/icons'
 import { showToast, showConfirmDialog } from '@/utils/ionicFeedback'
 import { formatDateRange } from '@/utils/dateUtils'
-import { getBudgets, getBudgetLog, abandonBudget, activateBudget, deleteBudget } from '@/api/accounting'
+import { getBudgets, getBudgetLog, abandonBudget, activateBudget, deleteBudget, generateBudgetNext } from '@/api/accounting'
 
 const router = useRouter()
 const list = ref([])
@@ -126,6 +136,10 @@ const loading = ref(false)
 const statusFilter = ref('')
 const historyModalOpen = ref(false)
 const historyLogs = ref([])
+
+function isRecurringOn(row) {
+  return row.is_recurring !== false && row.is_recurring !== 0
+}
 
 function statusColor(s) {
   const t = { draft: 'medium', active: 'success', abandoned: 'warning', completed: 'medium' }
@@ -211,6 +225,18 @@ async function onActivate(row) {
     await load()
   } catch (e) {
     if (e !== 'cancel') showToast(e?.response?.data?.error || 'Failed to activate')
+  }
+}
+
+async function onGenerateNext(row) {
+  try {
+    const res = await generateBudgetNext(row.id)
+    if (res?.success) {
+      showToast(res.reused ? res.message || 'Next period already exists' : 'Next period draft created')
+      await load()
+    }
+  } catch (e) {
+    showToast(e?.response?.data?.error || 'Failed to generate next period')
   }
 }
 

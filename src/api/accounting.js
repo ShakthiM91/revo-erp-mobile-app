@@ -285,6 +285,9 @@ export function abandonBudget(id) {
 export function activateBudget(id) {
   return request({ url: `/api/accounting/budgets/${id}/activate`, method: 'patch' })
 }
+export function generateBudgetNext(id) {
+  return request({ url: `/api/accounting/budgets/${id}/generate-next`, method: 'post' })
+}
 export function deleteBudget(id) {
   return request({ url: `/api/accounting/budgets/${id}`, method: 'delete' })
 }

@@ -42,7 +42,15 @@
             </ion-select-option>
           </ion-select>
         </ion-item>
+        <ion-item>
+          <ion-label>Recurring budget</ion-label>
+          <ion-toggle slot="end" v-model="form.is_recurring" />
+        </ion-item>
       </ion-list>
+
+      <ion-note v-if="sourcePlanLabel" color="primary" class="ion-padding-start ion-padding-end" style="display: block; margin-bottom: 8px;">
+        Auto-generated from: {{ sourcePlanLabel }}
+      </ion-note>
 
       <h4 class="ion-padding-start">Budget by category</h4>
       <p class="ion-padding-start ion-padding-end hint-text">
@@ -140,8 +148,10 @@ const form = reactive({
   period_type: 'month',
   start_date: '',
   end_date: '',
-  currency: ''
+  currency: '',
+  is_recurring: true
 })
+const sourcePlanLabel = ref('')
 const expenseCategories = ref([])
 const budgetByCategoryId = reactive({})
 const categoryFilterSearch = ref('')
@@ -290,6 +300,17 @@ async function loadPlan() {
     form.start_date = normalizeDateForInput(data.start_date)
     form.end_date = normalizeDateForInput(data.end_date)
     form.currency = data.currency || 'USD'
+    form.is_recurring = data.is_recurring !== false && data.is_recurring !== 0
+    sourcePlanLabel.value = ''
+    if (data.source_plan_id) {
+      try {
+        const src = await getBudgetById(data.source_plan_id)
+        const n = src?.data?.name
+        sourcePlanLabel.value = n ? `${n} (#${data.source_plan_id})` : `Plan #${data.source_plan_id}`
+      } catch {
+        sourcePlanLabel.value = `Plan #${data.source_plan_id}`
+      }
+    }
     const cats = expenseCategories.value.length > 0 ? expenseCategories.value : (await getCategories('expense'))?.data || []
     if (expenseCategories.value.length === 0) expenseCategories.value = cats
     initBudgetStateDefaults()
