@@ -174,10 +174,36 @@ function initBudgetStateDefaults() {
   }
 }
 
-function applyPlanItemsToState(items = []) {
-  for (const i of items) {
+function mergeCategoriesFromPlanItems(items = []) {
+  const existing = new Set((expenseCategories.value || []).map((c) => Number(c.id)))
+  const toAdd = []
+  for (const i of items || []) {
     const id = Number(i.category_id)
-    if (!(id in budgetByCategoryId)) continue
+    if (Number.isNaN(id) || existing.has(id)) continue
+    existing.add(id)
+    toAdd.push({
+      id,
+      name: i.category_name || `Category #${id}`,
+      type: i.category_type || 'expense',
+      parent_id: i.parent_id != null ? Number(i.parent_id) : null,
+      tenant_id: null,
+      is_default: false,
+      is_active: true,
+      sort_order: 0
+    })
+  }
+  if (toAdd.length) {
+    expenseCategories.value = [...(expenseCategories.value || []), ...toAdd]
+  }
+}
+
+function applyPlanItemsToState(items = []) {
+  for (const i of items || []) {
+    const id = Number(i.category_id)
+    if (Number.isNaN(id)) continue
+    if (!budgetByCategoryId[id]) {
+      budgetByCategoryId[id] = { amount: 0, is_divertable: false, is_system_calculated: false }
+    }
     budgetByCategoryId[id].amount = parseFloat(i.amount) || 0
     budgetByCategoryId[id].is_divertable = Boolean(i.is_divertable)
     budgetByCategoryId[id].is_system_calculated = Boolean(i.is_system_calculated)
@@ -277,7 +303,7 @@ function selectAmountOnFocus(ev) {
 
 async function loadCategories() {
   try {
-    const res = await getCategories('expense')
+    const res = await getCategories('expense', { include_workspace_scoped: true })
     expenseCategories.value = res?.data || []
     initBudgetStateDefaults()
   } catch (e) {
@@ -311,8 +337,12 @@ async function loadPlan() {
         sourcePlanLabel.value = `Plan #${data.source_plan_id}`
       }
     }
-    const cats = expenseCategories.value.length > 0 ? expenseCategories.value : (await getCategories('expense'))?.data || []
+    const cats =
+      expenseCategories.value.length > 0
+        ? expenseCategories.value
+        : (await getCategories('expense', { include_workspace_scoped: true }))?.data || []
     if (expenseCategories.value.length === 0) expenseCategories.value = cats
+    mergeCategoriesFromPlanItems(data.items || [])
     initBudgetStateDefaults()
     applyPlanItemsToState(data.items || [])
   } catch (e) {

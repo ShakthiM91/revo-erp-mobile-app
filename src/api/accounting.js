@@ -10,8 +10,9 @@ export function getTransactions(params) {
   })
 }
 
-export function getCategories(type = null) {
-  const params = type ? { type } : {}
+export function getCategories(type = null, extraParams = {}) {
+  const params = { ...extraParams }
+  if (type) params.type = type
   return request({
     url: '/api/accounting/categories',
     method: 'get',
