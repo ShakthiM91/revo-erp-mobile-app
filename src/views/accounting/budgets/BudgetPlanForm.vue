@@ -87,6 +87,7 @@
               class="amount-input"
               :readonly="budgetState(row.category_id).is_system_calculated"
               @ionFocus="selectAmountOnFocus"
+              @ionChange="markBudgetAmountsTouched"
             />
             <ion-toggle
               slot="end"
@@ -95,6 +96,7 @@
                 budgetState(row.category_id).is_system_calculated ||
                   (parseFloat(budgetState(row.category_id).amount) || 0) <= 0
               "
+              @ionChange="markBudgetAmountsTouched"
             >
               Divert
             </ion-toggle>
@@ -112,7 +114,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted, nextTick } from 'vue'
+import { ref, reactive, computed, onMounted, watch, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
   IonPage,
@@ -157,6 +159,12 @@ const budgetByCategoryId = reactive({})
 const categoryFilterSearch = ref('')
 const currencyOptions = ref([])
 const saving = ref(false)
+const hadPositiveBudgetOnLoad = ref(false)
+const budgetAmountsTouched = ref(false)
+
+function markBudgetAmountsTouched() {
+  budgetAmountsTouched.value = true
+}
 
 function budgetState(categoryId) {
   const id = Number(categoryId)
@@ -164,6 +172,11 @@ function budgetState(categoryId) {
     budgetByCategoryId[id] = { amount: 0, is_divertable: false, is_system_calculated: false }
   }
   return budgetByCategoryId[id]
+}
+
+function parseBudgetLineAmount(v) {
+  const n = parseFloat(v)
+  return Number.isFinite(n) ? n : 0
 }
 
 function initBudgetStateDefaults() {
@@ -345,6 +358,9 @@ async function loadPlan() {
     mergeCategoriesFromPlanItems(data.items || [])
     initBudgetStateDefaults()
     applyPlanItemsToState(data.items || [])
+    hadPositiveBudgetOnLoad.value = (data.items || []).some((i) => parseBudgetLineAmount(i?.amount) > 0)
+    budgetAmountsTouched.value = false
+    await nextTick()
   } catch (e) {
     showToast('Failed to load')
   }
@@ -356,16 +372,27 @@ async function handleSubmit() {
     return
   }
   const items = buildItemsForApi()
-  if (items.length === 0) {
+  if (!isEdit.value && items.length === 0) {
     showToast('Set at least one category to a positive amount')
     return
   }
   saving.value = true
   try {
-    const payload = { ...form, currency: form.currency || 'USD', items }
+    const payload = { ...form, currency: form.currency || 'USD' }
+    if (!isEdit.value || items.length > 0 || budgetAmountsTouched.value) {
+      payload.items = items
+    }
     if (isEdit.value) {
       await updateBudget(planId.value, payload)
-      showToast('Budget updated')
+      if (
+        items.length === 0 &&
+        hadPositiveBudgetOnLoad.value &&
+        !budgetAmountsTouched.value
+      ) {
+        showToast('Plan saved; budget lines unchanged. Refresh if amounts look wrong.')
+      } else {
+        showToast('Budget updated')
+      }
     } else {
       await createBudget(payload)
       showToast('Budget created')
@@ -399,6 +426,13 @@ const loadCurrencies = async () => {
     if (!form.currency) form.currency = 'USD'
   }
 }
+
+watch(planId, async (id, prev) => {
+  if (!id || !isEdit.value) return
+  if (prev != null && String(id) === String(prev)) return
+  await loadCategories()
+  await loadPlan()
+})
 
 onMounted(async () => {
   await loadCurrencies()
