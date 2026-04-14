@@ -116,11 +116,12 @@ export function getSummary() {
   })
 }
 
-export function getReports(params) {
+export function getReports(params, opts = {}) {
   return request({
     url: '/api/accounting/reports',
     method: 'get',
-    params
+    params,
+    ...(opts.silent403 ? { silent403: true } : {})
   })
 }
 

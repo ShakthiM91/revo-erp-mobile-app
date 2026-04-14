@@ -57,7 +57,9 @@ service.interceptors.response.use(
         }
       }
     } else if (status === 403) {
-      showToast(message || 'Access denied')
+      if (!error.config?.silent403) {
+        showToast(message || 'Access denied')
+      }
     } else if (status === 404) {
       showToast('Resource not found')
     } else if (status === 500) {
