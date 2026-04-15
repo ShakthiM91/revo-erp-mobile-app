@@ -46,6 +46,12 @@
           <ion-segment-button value="leaf">Leaf</ion-segment-button>
         </ion-segment>
       </ion-toolbar>
+      <ion-toolbar v-if="reportData.length" class="view-toolbar">
+        <ion-segment v-model="viewMode" class="view-segment">
+          <ion-segment-button value="chart">Chart</ion-segment-button>
+          <ion-segment-button value="list">List</ion-segment-button>
+        </ion-segment>
+      </ion-toolbar>
     </ion-header>
     <ion-content>
       <ion-refresher slot="fixed" @ionRefresh="onRefresh">
@@ -55,7 +61,7 @@
       <template v-else-if="reportData.length">
         <div class="report-content">
           <!-- Summary for monthly -->
-          <ion-card v-if="reportType === 'monthly'">
+          <ion-card v-if="reportType === 'monthly'" class="summary-card">
             <ion-card-header>
               <ion-card-title>Summary {{ dateRangeLabel }} ({{ defaultCurrency.code || 'USD' }})</ion-card-title>
             </ion-card-header>
@@ -76,7 +82,7 @@
           </ion-card>
 
           <!-- Summary for daily -->
-          <ion-card v-else-if="reportType === 'daily'">
+          <ion-card v-else-if="reportType === 'daily'" class="summary-card">
             <ion-card-header>
               <ion-card-title>Daily Summary ({{ defaultCurrency.code || 'USD' }})</ion-card-title>
             </ion-card-header>
@@ -93,7 +99,7 @@
           </ion-card>
 
           <!-- Summary for balance growth -->
-          <ion-card v-else-if="reportType === 'balance_growth'">
+          <ion-card v-else-if="reportType === 'balance_growth'" class="summary-card">
             <ion-card-header>
               <ion-card-title>Balance Growth</ion-card-title>
             </ion-card-header>
@@ -106,7 +112,7 @@
           </ion-card>
 
           <!-- Summary for category reports -->
-          <ion-card v-else-if="reportType === 'category_income' || reportType === 'category_expense'">
+          <ion-card v-else-if="reportType === 'category_income' || reportType === 'category_expense'" class="summary-card">
             <ion-card-header>
               <ion-card-title>{{ reportType === 'category_income' ? 'Income' : 'Expense' }} by Category</ion-card-title>
             </ion-card-header>
@@ -118,46 +124,93 @@
             </ion-card-content>
           </ion-card>
 
+          <!-- Chart (default) -->
+          <ion-card v-show="viewMode === 'chart'" class="chart-card">
+            <ion-card-content class="chart-card-content">
+              <ReportCharts
+                :report-type="reportType"
+                :report-data="reportData"
+                :currency-code="defaultCurrency.code || 'USD'"
+              />
+            </ion-card-content>
+          </ion-card>
+
           <!-- List views -->
-          <ion-list v-if="reportType === 'monthly'" lines="inset">
-            <ion-item-divider>By Month</ion-item-divider>
-            <ion-item v-for="row in reportData" :key="row.month">
-              <ion-label>
-                <h2>{{ monthName(row.month) }}</h2>
-                <p>Income: {{ formatCurrency(row.income) }} · Expense: {{ formatCurrency(row.expense) }}</p>
+          <ion-list
+            v-show="viewMode === 'list'"
+            v-if="reportType === 'monthly'"
+            class="report-list"
+            lines="full"
+          >
+            <ion-list-header>
+              <ion-label>By month</ion-label>
+            </ion-list-header>
+            <ion-item v-for="row in reportData" :key="monthRowKey(row)" class="report-item">
+              <ion-label class="report-item-label">
+                <div class="report-item-title">{{ monthLabel(row) }}</div>
+                <div class="report-item-meta">
+                  <span class="meta-income">Income {{ formatCurrency(row.income) }}</span>
+                  <span class="meta-sep">·</span>
+                  <span class="meta-expense">Expense {{ formatCurrency(row.expense) }}</span>
+                </div>
               </ion-label>
-              <ion-note slot="end">{{ formatCurrency((row.income || 0) - (row.expense || 0)) }}</ion-note>
+              <ion-note slot="end" class="report-item-end">{{ formatCurrency((row.income || 0) - (row.expense || 0)) }}</ion-note>
             </ion-item>
           </ion-list>
 
-          <ion-list v-else-if="reportType === 'daily'" lines="inset">
-            <ion-item-divider>By Date</ion-item-divider>
-            <ion-item v-for="row in reportData" :key="row.date">
-              <ion-label>
-                <h2>{{ formatDateOnly(row.date) }}</h2>
-                <p>Income: {{ formatCurrency(row.income) }} · Expense: {{ formatCurrency(row.expense) }}</p>
+          <ion-list
+            v-show="viewMode === 'list'"
+            v-if="reportType === 'daily'"
+            class="report-list"
+            lines="full"
+          >
+            <ion-list-header>
+              <ion-label>By date</ion-label>
+            </ion-list-header>
+            <ion-item v-for="row in reportData" :key="row.date" class="report-item">
+              <ion-label class="report-item-label">
+                <div class="report-item-title">{{ formatDateOnly(row.date) }}</div>
+                <div class="report-item-meta">
+                  <span class="meta-income">Income {{ formatCurrency(row.income) }}</span>
+                  <span class="meta-sep">·</span>
+                  <span class="meta-expense">Expense {{ formatCurrency(row.expense) }}</span>
+                </div>
               </ion-label>
-              <ion-note slot="end">{{ formatCurrency((row.income || 0) - (row.expense || 0)) }}</ion-note>
+              <ion-note slot="end" class="report-item-end">{{ formatCurrency((row.income || 0) - (row.expense || 0)) }}</ion-note>
             </ion-item>
           </ion-list>
 
-          <ion-list v-else-if="reportType === 'balance_growth'" lines="inset">
-            <ion-item-divider>By Date</ion-item-divider>
-            <ion-item v-for="row in reportData" :key="row.date">
-              <ion-label>
-                <h2>{{ formatDateOnly(row.date) }}</h2>
+          <ion-list
+            v-show="viewMode === 'list'"
+            v-if="reportType === 'balance_growth'"
+            class="report-list"
+            lines="full"
+          >
+            <ion-list-header>
+              <ion-label>By date</ion-label>
+            </ion-list-header>
+            <ion-item v-for="row in reportData" :key="row.date" class="report-item">
+              <ion-label class="report-item-label">
+                <div class="report-item-title">{{ formatDateOnly(row.date) }}</div>
               </ion-label>
-              <ion-note slot="end">{{ formatCurrency(row.balance) }}</ion-note>
+              <ion-note slot="end" class="report-item-end">{{ formatCurrency(row.balance) }}</ion-note>
             </ion-item>
           </ion-list>
 
-          <ion-list v-else-if="reportType === 'category_income' || reportType === 'category_expense'" lines="inset">
-            <ion-item-divider>By Category</ion-item-divider>
-            <ion-item v-for="row in reportData" :key="row.category_id">
-              <ion-label>
-                <h2>{{ row.category_name || 'Uncategorized' }}</h2>
+          <ion-list
+            v-show="viewMode === 'list'"
+            v-if="reportType === 'category_income' || reportType === 'category_expense'"
+            class="report-list"
+            lines="full"
+          >
+            <ion-list-header>
+              <ion-label>By category</ion-label>
+            </ion-list-header>
+            <ion-item v-for="row in reportData" :key="row.category_id" class="report-item">
+              <ion-label class="report-item-label">
+                <div class="report-item-title">{{ row.category_name || 'Uncategorized' }}</div>
               </ion-label>
-              <ion-note slot="end">{{ formatCurrency(row.amount) }}</ion-note>
+              <ion-note slot="end" class="report-item-end">{{ formatCurrency(row.amount) }}</ion-note>
             </ion-item>
           </ion-list>
         </div>
@@ -228,8 +281,8 @@ import {
   IonCardTitle,
   IonCardContent,
   IonList,
+  IonListHeader,
   IonItem,
-  IonItemDivider,
   IonLabel,
   IonNote,
   IonModal,
@@ -240,6 +293,7 @@ import {
 import { showToast } from '@/utils/ionicFeedback'
 import { getReports, getAccounts } from '@/api/accounting'
 import { getTenantDefaultCurrency } from '@/api/currency'
+import ReportCharts from './ReportCharts.vue'
 
 const ROUTE_TO_TYPE = {
   'income-expense': 'monthly',
@@ -265,6 +319,8 @@ const reportTitle = computed(() => {
   return titles[reportType.value] || 'Report'
 })
 const categoryLevel = ref('leaf')
+/** 'chart' is default; user can switch to 'list'. */
+const viewMode = ref('chart')
 const showStartDatePicker = ref(false)
 const showEndDatePicker = ref(false)
 const startDate = ref('')
@@ -276,8 +332,14 @@ const loading = ref(false)
 const defaultCurrency = ref({ code: 'USD' })
 
 const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
-function monthName(m) {
-  return monthNames[(m || 1) - 1] || `Month ${m}`
+function monthLabel(row) {
+  const m = Number(row.month) || 1
+  const label = monthNames[m - 1] || `Month ${m}`
+  const y = row.year
+  return y != null && y !== '' ? `${label} ${y}` : label
+}
+function monthRowKey(row) {
+  return `${row.year ?? ''}-${row.month}`
 }
 
 function initDateRange() {
@@ -390,6 +452,7 @@ async function loadAccounts() {
 }
 
 watch(() => route.path, () => {
+  viewMode.value = 'chart'
   fetchReports()
 })
 
@@ -410,6 +473,13 @@ ion-content { --background: #f7f8fa; }
 .spinner { margin: 48px auto; display: block; }
 .empty-state { padding: 48px 16px; text-align: center; }
 .report-content { padding: 0 16px 16px; }
+.summary-card {
+  margin: 0 0 12px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+}
+.summary-card ion-card-title {
+  font-size: 1rem;
+}
 .summary-row { display: flex; justify-content: space-between; padding: 8px 0; }
 .summary-row.total { border-top: 1px solid var(--ion-color-light); margin-top: 8px; font-weight: 600; }
 .summary-row .label { color: var(--ion-color-medium); }
@@ -420,4 +490,72 @@ ion-content { --background: #f7f8fa; }
 .filter-item.full-width { flex: 1 1 100%; min-width: 100%; }
 .filter-item ion-note { font-size: 14px; }
 .filter-item ion-select { max-width: 100%; }
+.view-toolbar {
+  --min-height: 44px;
+  --padding-start: 12px;
+  --padding-end: 12px;
+}
+.view-segment {
+  width: 100%;
+  max-width: 360px;
+  margin: 0 auto;
+}
+.chart-card {
+  margin: 0 0 12px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+.chart-card-content {
+  --padding-top: 8px;
+  --padding-bottom: 12px;
+  --padding-start: 8px;
+  --padding-end: 8px;
+}
+.report-list {
+  background: transparent;
+  margin: 0;
+  padding: 0 0 8px;
+}
+.report-list ion-list-header {
+  --background: transparent;
+  --color: var(--ion-color-medium);
+  font-size: 13px;
+  font-weight: 600;
+  min-height: 36px;
+  padding-top: 4px;
+}
+.report-item {
+  --padding-start: 12px;
+  --inner-padding-end: 12px;
+  --min-height: 64px;
+  border-radius: 10px;
+  margin-bottom: 6px;
+  --background: var(--ion-item-background, #fff);
+}
+.report-item-label {
+  margin: 6px 0;
+}
+.report-item-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--ion-text-color);
+  letter-spacing: -0.01em;
+}
+.report-item-meta {
+  font-size: 13px;
+  margin-top: 4px;
+  color: var(--ion-color-medium);
+}
+.meta-income { color: var(--ion-color-success); }
+.meta-expense { color: var(--ion-color-danger); }
+.meta-sep { padding: 0 4px; opacity: 0.5; }
+.report-item-end {
+  font-size: 14px;
+  font-weight: 600;
+  align-self: center;
+  max-width: 42%;
+  text-align: end;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 </style>
