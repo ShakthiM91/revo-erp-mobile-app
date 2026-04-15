@@ -21,7 +21,7 @@
               placeholder="Title for the transaction"
               @ionInput="onTitleInput"
               @ionBlur="onTitleBlur"
-              autocomplete="off"
+              autocomplete="on"
             />
           </ion-item>
           <div v-if="showTitleSuggestions" class="title-suggestions">
@@ -171,19 +171,36 @@
       </ion-modal>
       <!-- category picker -->
       <ion-modal :is-open="showCategoryPicker" @didDismiss="onCategoryPickerDismiss">
-        <ion-header><ion-toolbar><ion-title>Category</ion-title><ion-buttons slot="end"><ion-button @click="showCategoryPicker = false">Cancel</ion-button></ion-buttons></ion-toolbar></ion-header>
+        <ion-header>
+          <ion-toolbar>
+            <ion-title>Category</ion-title>
+            <ion-buttons slot="end">
+              <ion-button @click="openNewCategoryFromPicker">New</ion-button>
+              <ion-button @click="showCategoryPicker = false">Cancel</ion-button>
+            </ion-buttons>
+          </ion-toolbar>
+          <ion-toolbar>
+            <ion-searchbar
+              v-model="categorySearchQuery"
+              placeholder="Search categories..."
+              debounce="150"
+            />
+          </ion-toolbar>
+        </ion-header>
         <ion-content>
-          <ion-searchbar
-            v-model="categorySearchQuery"
-            placeholder="Search categories..."
-            debounce="150"
-          />
           <ion-list>
             <ion-item v-for="c in filteredCategoryCols" :key="c.value" button @click="form.category_id = c.value; showCategoryPicker = false"><ion-label>{{ c.text }}</ion-label></ion-item>
             <ion-item v-if="filteredCategoryCols.length === 0"><ion-label color="medium">No categories match</ion-label></ion-item>
           </ion-list>
         </ion-content>
       </ion-modal>
+      <CategoryForm
+        :is-open="showNewCategoryForm"
+        :category="null"
+        :type="form.type"
+        @close="showNewCategoryForm = false"
+        @success="onNewCategorySuccess"
+      />
       <ion-modal :is-open="showCurrencyPicker" @didDismiss="showCurrencyPicker = false">
         <ion-header><ion-toolbar><ion-title>Currency</ion-title><ion-buttons slot="end"><ion-button @click="showCurrencyPicker = false">Cancel</ion-button></ion-buttons></ion-toolbar></ion-header>
         <ion-content>
@@ -192,10 +209,16 @@
           </ion-list>
         </ion-content>
       </ion-modal>
-      <ion-modal :is-open="showDatePicker" @didDismiss="showDatePicker = false">
+      <ion-modal
+        :is-open="showDatePicker"
+        @didDismiss="onDatePickerDismiss"
+        @didPresent="onDatePickerPresent"
+      >
         <ion-header><ion-toolbar><ion-title>Date & Time</ion-title><ion-buttons slot="end"><ion-button @click="showDatePicker = false">OK</ion-button></ion-buttons></ion-toolbar></ion-header>
-        <ion-content>
+        <ion-content class="date-picker-content">
           <ion-datetime
+            v-if="datePickerReady"
+            :key="datePickerRenderKey"
             presentation="date-time"
             :value="dateTimeToIso(form.transaction_date)"
             @ionChange="onDateChange"
@@ -220,7 +243,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, watch, onMounted } from 'vue'
+import { ref, reactive, computed, watch, onMounted, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
   IonPage,
@@ -245,6 +268,7 @@ import {
   IonSearchbar
 } from '@ionic/vue'
 import AmountCalculatorModal from '@/components/AmountCalculatorModal.vue'
+import CategoryForm from '@/views/accounting/categories/components/CategoryForm.vue'
 import { showToast } from '@/utils/ionicFeedback'
 import { createTransaction, updateTransaction, getTransactionById, getTransactions, getCategoryTree, getAccounts, getPrimaryAccount, getBudgetContext } from '@/api/accounting'
 import { getTenantCurrencies, getTenantDefaultCurrency } from '@/api/currency'
@@ -312,8 +336,11 @@ const showToAccountPicker = ref(false)
 const showCategoryPicker = ref(false)
 const showCurrencyPicker = ref(false)
 const showDatePicker = ref(false)
+const datePickerReady = ref(false)
+const datePickerRenderKey = ref(0)
 const showStatusPicker = ref(false)
 const showCalculator = ref(false)
+const showNewCategoryForm = ref(false)
 
 function openCalculator() {
   document.activeElement?.blur?.()
@@ -635,6 +662,38 @@ function onCategoryPickerDismiss () {
   categorySearchQuery.value = ''
 }
 
+function openNewCategoryFromPicker () {
+  if (form.type === 'transfer') return
+  showNewCategoryForm.value = true
+}
+
+async function onNewCategorySuccess (created) {
+  showNewCategoryForm.value = false
+  await loadCategories()
+  const newId = created?.id != null ? Number(created.id) : null
+  if (newId != null) {
+    form.category_id = newId
+    showCategoryPicker.value = false
+  }
+}
+
+function onDatePickerPresent () {
+  datePickerReady.value = false
+  datePickerRenderKey.value += 1
+  nextTick(() => {
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        datePickerReady.value = true
+      })
+    })
+  })
+}
+
+function onDatePickerDismiss () {
+  showDatePicker.value = false
+  datePickerReady.value = false
+}
+
 function onDateChange (e) {
   const v = e.detail.value
   if (v) form.transaction_date = normalizeTransactionDateTime(v)
@@ -855,5 +914,9 @@ ion-segment-button { flex: 1; min-width: 0; }
 .type-transfer.segment-button-checked {
   --color: white;
   --indicator-color: var(--ion-color-primary);
+}
+.date-picker-content ion-datetime {
+  width: 100%;
+  max-width: 100%;
 }
 </style>

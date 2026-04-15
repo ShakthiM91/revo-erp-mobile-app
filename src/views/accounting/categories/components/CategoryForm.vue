@@ -217,7 +217,8 @@ async function submit() {
     }
     const res = props.category?.id ? await updateCategory(props.category.id, data) : await createCategory(data)
     if (res?.queued) showToast('Saved locally. Will sync when online.')
-    emit('success')
+    const createdOrUpdated = res?.queued ? null : (res?.data ?? null)
+    emit('success', createdOrUpdated)
   } catch (e) {
     showToast(e?.message || 'Failed')
   } finally {
