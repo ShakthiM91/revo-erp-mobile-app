@@ -515,7 +515,10 @@ async function fetchBudgetContext () {
   }
   try {
     const dateStr = String(form.transaction_date).split(' ')[0]
-    const res = await getBudgetContext({ date: dateStr, category_id: form.category_id })
+    const params = { date: dateStr, category_id: form.category_id }
+    const ws = selectedAccount.value?.workspace_id
+    if (ws != null && ws !== '') params.workspace_id = ws
+    const res = await getBudgetContext(params)
     budgetContext.value = res?.data || null
   } catch {
     budgetContext.value = null

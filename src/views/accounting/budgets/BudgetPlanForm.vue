@@ -10,6 +10,23 @@
     </ion-header>
     <ion-content class="ion-padding">
       <ion-list lines="none">
+        <ion-item v-if="!isEdit">
+          <ion-label position="stacked">Workspace</ion-label>
+          <ion-select
+            v-model="form.workspace_id"
+            interface="action-sheet"
+            placeholder="Select workspace"
+            @ionChange="onWorkspaceSelected"
+          >
+            <ion-select-option v-for="w in workspaces" :key="w.id" :value="w.id">
+              {{ w.name }}
+            </ion-select-option>
+          </ion-select>
+        </ion-item>
+        <ion-item v-else>
+          <ion-label position="stacked">Workspace</ion-label>
+          <ion-input :value="lockedWorkspaceLabel" readonly />
+        </ion-item>
         <ion-item>
           <ion-label position="stacked">Plan Name</ion-label>
           <ion-input v-model="form.name" placeholder="e.g. Q1 2025 Budget" />
@@ -53,14 +70,17 @@
       </ion-note>
 
       <h4 class="ion-padding-start">Budget by category</h4>
-      <p class="ion-padding-start ion-padding-end hint-text">
+      <ion-note v-if="!categoryWorkspaceId" color="warning" class="ion-padding-start ion-padding-end warn-note">
+        Select a workspace above to load categories. Workspace cannot be changed after the plan is created.
+      </ion-note>
+      <p v-else class="ion-padding-start ion-padding-end hint-text">
         Enter an amount to include a category; leave 0 to exclude. Sub-categories only will get a calculated parent on save.
       </p>
       <ion-note v-if="childrenExceedParentWarning" color="warning" class="ion-padding-start ion-padding-end warn-note">
         {{ childrenExceedParentWarning }}
       </ion-note>
 
-      <ion-toolbar>
+      <ion-toolbar v-if="categoryWorkspaceId">
         <ion-searchbar
           v-model="categoryFilterSearch"
           placeholder="Filter categories..."
@@ -68,7 +88,7 @@
         />
       </ion-toolbar>
 
-      <ion-list lines="inset">
+      <ion-list v-if="categoryWorkspaceId" lines="inset">
         <template v-for="row in filteredDisplayRows" :key="row.category_id">
           <ion-item :class="{ 'row-child': row._rowKind === 'child' }">
             <ion-label class="ion-text-wrap">
@@ -138,6 +158,7 @@ import {
 } from '@ionic/vue'
 import { showToast } from '@/utils/ionicFeedback'
 import { getCategories, getBudgetById, createBudget, updateBudget } from '@/api/accounting'
+import { getWorkspaces, getSharedWorkspaces } from '@/api/workspace'
 import { getTenantCurrencies, getTenantDefaultCurrency } from '@/api/currency'
 
 const route = useRoute()
@@ -145,7 +166,11 @@ const router = useRouter()
 const planId = computed(() => route.params.id)
 const isEdit = computed(() => !!planId.value)
 
+const workspaces = ref([])
+const lockedWorkspaceId = ref(null)
+
 const form = reactive({
+  workspace_id: null,
   name: '',
   period_type: 'month',
   start_date: '',
@@ -161,6 +186,47 @@ const currencyOptions = ref([])
 const saving = ref(false)
 const hadPositiveBudgetOnLoad = ref(false)
 const budgetAmountsTouched = ref(false)
+
+const categoryWorkspaceId = computed(() => {
+  if (isEdit.value) return lockedWorkspaceId.value
+  return form.workspace_id
+})
+
+const lockedWorkspaceLabel = computed(() => {
+  const id = lockedWorkspaceId.value
+  if (id == null) return '—'
+  const w = workspaces.value.find((x) => Number(x.id) === Number(id))
+  return w ? w.name : `Workspace #${id}`
+})
+
+async function loadWorkspaces() {
+  try {
+    const [ownRes, sharedRes] = await Promise.all([getWorkspaces(), getSharedWorkspaces()])
+    const own = ownRes?.data ?? []
+    const shared = sharedRes?.data?.active ?? []
+    const sharedForDropdown = shared.map((s) => ({
+      ...s,
+      id: s.id,
+      name: s.tenant_name ? `${s.name} (${s.tenant_name})` : `${s.name} (shared)`
+    }))
+    workspaces.value = [...own, ...sharedForDropdown]
+  } catch {
+    workspaces.value = []
+  }
+}
+
+function resetCategoryBudgetState() {
+  expenseCategories.value = []
+  Object.keys(budgetByCategoryId).forEach((k) => {
+    delete budgetByCategoryId[k]
+  })
+}
+
+async function onWorkspaceSelected() {
+  budgetAmountsTouched.value = false
+  resetCategoryBudgetState()
+  await loadCategories()
+}
 
 function markBudgetAmountsTouched() {
   budgetAmountsTouched.value = true
@@ -315,8 +381,13 @@ function selectAmountOnFocus(ev) {
 }
 
 async function loadCategories() {
+  const ws = categoryWorkspaceId.value
+  if (ws == null || ws === '') {
+    resetCategoryBudgetState()
+    return
+  }
   try {
-    const res = await getCategories('expense', { include_workspace_scoped: true })
+    const res = await getCategories('expense', { workspace_id: ws })
     expenseCategories.value = res?.data || []
     initBudgetStateDefaults()
   } catch (e) {
@@ -334,6 +405,8 @@ async function loadPlan() {
       router.push('/budgets')
       return
     }
+    lockedWorkspaceId.value =
+      data.workspace_id != null && data.workspace_id !== '' ? Number(data.workspace_id) : null
     form.name = data.name || ''
     form.period_type = data.period_type || 'month'
     form.start_date = normalizeDateForInput(data.start_date)
@@ -350,10 +423,13 @@ async function loadPlan() {
         sourcePlanLabel.value = `Plan #${data.source_plan_id}`
       }
     }
+    const ws = lockedWorkspaceId.value
     const cats =
       expenseCategories.value.length > 0
         ? expenseCategories.value
-        : (await getCategories('expense', { include_workspace_scoped: true }))?.data || []
+        : ws != null
+          ? (await getCategories('expense', { workspace_id: ws }))?.data || []
+          : []
     if (expenseCategories.value.length === 0) expenseCategories.value = cats
     mergeCategoriesFromPlanItems(data.items || [])
     initBudgetStateDefaults()
@@ -371,6 +447,10 @@ async function handleSubmit() {
     showToast('Fill required fields')
     return
   }
+  if (!isEdit.value && (form.workspace_id == null || form.workspace_id === '')) {
+    showToast('Select a workspace')
+    return
+  }
   const items = buildItemsForApi()
   if (!isEdit.value && items.length === 0) {
     showToast('Set at least one category to a positive amount')
@@ -379,6 +459,9 @@ async function handleSubmit() {
   saving.value = true
   try {
     const payload = { ...form, currency: form.currency || 'USD' }
+    if (!isEdit.value) {
+      payload.workspace_id = form.workspace_id
+    }
     if (!isEdit.value || items.length > 0 || budgetAmountsTouched.value) {
       payload.items = items
     }
@@ -430,15 +513,19 @@ const loadCurrencies = async () => {
 watch(planId, async (id, prev) => {
   if (!id || !isEdit.value) return
   if (prev != null && String(id) === String(prev)) return
-  await loadCategories()
+  await loadWorkspaces()
   await loadPlan()
 })
 
 onMounted(async () => {
+  await loadWorkspaces()
   await loadCurrencies()
-  await loadCategories()
-  if (isEdit.value) await loadPlan()
-  else if (!form.currency && currencyOptions.value.length) form.currency = currencyOptions.value[0].code
+  if (isEdit.value) {
+    await loadPlan()
+  } else {
+    await loadCategories()
+  }
+  if (!isEdit.value && !form.currency && currencyOptions.value.length) form.currency = currencyOptions.value[0].code
 })
 </script>
 
