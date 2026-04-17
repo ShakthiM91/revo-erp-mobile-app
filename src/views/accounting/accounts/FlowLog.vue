@@ -7,6 +7,9 @@
         </ion-buttons>
         <ion-title>Flow Log</ion-title>
         <ion-buttons slot="end">
+          <ion-button :disabled="!accountId" aria-label="New transaction" @click="goCreateTransaction">
+            <ion-icon :icon="addOutline" />
+          </ion-button>
           <ion-button :disabled="loading" @click="load">Refresh</ion-button>
         </ion-buttons>
       </ion-toolbar>
@@ -82,7 +85,7 @@
 
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import {
   IonPage,
   IonHeader,
@@ -91,6 +94,7 @@ import {
   IonBackButton,
   IonTitle,
   IonButton,
+  IonIcon,
   IonContent,
   IonRefresher,
   IonRefresherContent,
@@ -104,11 +108,13 @@ import {
   IonInfiniteScrollContent,
   IonNote
 } from '@ionic/vue'
+import { addOutline } from 'ionicons/icons'
 import { showToast } from '@/utils/ionicFeedback'
 import { getAccountFlowLog, getAccountFlowSummary } from '@/api/accounting'
 import { useSyncStore } from '@/store/sync'
 
 const route = useRoute()
+const router = useRouter()
 const syncStore = useSyncStore()
 const accountId = computed(() => route.params.id)
 
@@ -197,6 +203,12 @@ async function fetchSummary() {
 async function load() {
   currentPage.value = 1
   await Promise.all([fetchFlowLog(1), fetchSummary()])
+}
+
+function goCreateTransaction() {
+  const id = accountId.value
+  if (id == null || id === '') return
+  router.push(`/transactions/create?account_id=${id}`)
 }
 
 async function loadMore(ev) {
