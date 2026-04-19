@@ -103,7 +103,9 @@ import { createCategory, updateCategory, getCategoryTree } from '@/api/accountin
 const props = defineProps({
   isOpen: { type: Boolean, default: false },
   category: { type: Object, default: null },
-  type: { type: String, default: 'income' }
+  type: { type: String, default: 'income' },
+  workspaceId: { type: Number, default: undefined },
+  includeAllWorkspaces: { type: Boolean, default: false }
 })
 
 const emit = defineEmits(['close', 'success'])
@@ -158,7 +160,9 @@ const parentText = computed(() => {
 
 async function loadParents() {
   try {
-    const res = await getCategoryTree(props.type)
+    const res = props.includeAllWorkspaces
+      ? await getCategoryTree(props.type, null, { includeAllWorkspaces: true })
+      : await getCategoryTree(props.type, props.workspaceId ?? null)
     const data = res?.data ?? (res?.success ? res?.data : []) ?? []
     parentCategories.value = Array.isArray(data) ? data : []
   } catch (_) {
@@ -195,6 +199,13 @@ watch(
   { immediate: true }
 )
 
+watch(
+  () => [props.workspaceId, props.includeAllWorkspaces],
+  () => {
+    if (props.isOpen) loadParents()
+  }
+)
+
 async function submit() {
   const name = (form.name || '').trim()
   if (!name) {
@@ -214,6 +225,9 @@ async function submit() {
       description: form.description?.trim() || null,
       sort_order: form.sort_order ?? 0,
       is_active: form.is_active
+    }
+    if (!props.category?.id && typeof props.workspaceId === 'number' && !Number.isNaN(props.workspaceId)) {
+      data.workspace_id = props.workspaceId
     }
     const res = props.category?.id ? await updateCategory(props.category.id, data) : await createCategory(data)
     if (res?.queued) showToast('Saved locally. Will sync when online.')

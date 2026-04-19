@@ -20,14 +20,17 @@ export function getCategories(type = null, extraParams = {}) {
   })
 }
 
-export function getCategoryTree(type = null) {
-  const params = type ? { type } : {}
-  const cacheKey = CACHE_KEYS.CATEGORY_TREE(type)
+export function getCategoryTree(type = null, workspaceId = null, options = {}) {
+  const params = {}
+  if (type) params.type = type
+  if (workspaceId != null && workspaceId !== '') params.workspace_id = workspaceId
+  if (options.includeAllWorkspaces) params.include_workspace_scoped = 1
+  const cacheKey = CACHE_KEYS.CATEGORY_TREE(type, workspaceId, options.includeAllWorkspaces)
   return getWithCache(cacheKey, () =>
     request({
       url: '/api/accounting/categories/tree',
       method: 'get',
-      params
+      params: Object.keys(params).length ? params : undefined
     })
   )
 }
@@ -135,8 +138,14 @@ export function getCategoryBreakdown(params) {
 
 // Accounts API
 export function getAccounts(filters = {}) {
-  const cacheKey =
-    filters && filters.is_active === true ? CACHE_KEYS.ACCOUNTS_ACTIVE : CACHE_KEYS.ACCOUNTS
+  const wsRaw = filters.workspace_id
+  const ws =
+    wsRaw !== undefined && wsRaw !== null && wsRaw !== ''
+      ? String(Number(wsRaw))
+      : ''
+  const active = filters && filters.is_active === true
+  let cacheKey = active ? CACHE_KEYS.ACCOUNTS_ACTIVE : CACHE_KEYS.ACCOUNTS
+  if (ws) cacheKey = `${cacheKey}:ws:${ws}`
   return getWithCache(cacheKey, () =>
     request({
       url: '/api/accounting/accounts',

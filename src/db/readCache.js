@@ -27,6 +27,8 @@ const KEY_TO_STORE = {
 function resolveKey(key) {
   const store = KEY_TO_STORE[key]
   if (store) return { store }
+  if (key.startsWith('accounts:active:ws:')) return { store: 'accounts' }
+  if (key.startsWith('accounts:ws:')) return { store: 'accounts' }
   if (key.startsWith('categoryTree:')) return { store: 'category_trees' }
   if (key.startsWith('categories:')) return { store: 'category_trees' }
   return null
@@ -85,7 +87,19 @@ export async function removeCached(key) {
 export const CACHE_KEYS = {
   ACCOUNTS: 'accounts',
   ACCOUNTS_ACTIVE: 'accounts:active',
-  CATEGORY_TREE: (type) => (type ? `categoryTree:${type}` : 'categoryTree'),
+  /**
+   * @param {string|null} type - 'income' | 'expense'
+   * @param {number|null|undefined} workspaceId
+   * @param {boolean} [includeAllWorkspaces] - tenant-wide tree (shared workspace_mode)
+   */
+  CATEGORY_TREE: (type, workspaceId = null, includeAllWorkspaces = false) => {
+    if (!type) return 'categoryTree'
+    if (includeAllWorkspaces) return `categoryTree:${type}:allWs`
+    if (workspaceId != null && workspaceId !== '') {
+      return `categoryTree:${type}:ws:${Number(workspaceId)}`
+    }
+    return `categoryTree:${type}`
+  },
   CATEGORIES: (type) => (type ? `categories:${type}` : 'categories'),
   CURRENCIES_TENANT: 'currencies:tenant',
   DEFAULT_CURRENCY: 'defaultCurrency',

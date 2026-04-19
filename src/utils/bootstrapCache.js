@@ -27,6 +27,16 @@ async function fetchAndCacheAll() {
       method: 'get',
       params: { type: 'expense' }
     }).then((r) => setCached(CACHE_KEYS.CATEGORY_TREE('expense'), r)),
+    request({
+      url: '/api/accounting/categories/tree',
+      method: 'get',
+      params: { type: 'income', include_workspace_scoped: 1 }
+    }).then((r) => setCached(CACHE_KEYS.CATEGORY_TREE('income', null, true), r)),
+    request({
+      url: '/api/accounting/categories/tree',
+      method: 'get',
+      params: { type: 'expense', include_workspace_scoped: 1 }
+    }).then((r) => setCached(CACHE_KEYS.CATEGORY_TREE('expense', null, true), r)),
     request({ url: '/api/currencies/tenant', method: 'get' }).then((r) =>
       setCached(CACHE_KEYS.CURRENCIES_TENANT, r)
     ),

@@ -38,6 +38,22 @@
               </ion-select-option>
             </ion-select>
           </ion-item>
+          <ion-item v-if="workspaceMode === 'private'" lines="none" class="filter-item full-width">
+            <ion-label position="stacked">Workspace</ion-label>
+            <ion-select
+              v-model="selectedWorkspaceId"
+              interface="popover"
+              placeholder="Workspace"
+            >
+              <ion-select-option
+                v-for="ws in workspaces"
+                :key="ws.id"
+                :value="ws.id"
+              >
+                {{ ws.is_default ? `${ws.name} (default)` : ws.name }}
+              </ion-select-option>
+            </ion-select>
+          </ion-item>
         </div>
       </ion-toolbar>
       <ion-toolbar v-if="reportType === 'category_income' || reportType === 'category_expense'">
@@ -293,6 +309,7 @@ import {
 import { showToast } from '@/utils/ionicFeedback'
 import { getReports, getAccounts } from '@/api/accounting'
 import { getTenantDefaultCurrency } from '@/api/currency'
+import { useWorkspaceScope } from '@/composables/useWorkspaceScope'
 import ReportCharts from './ReportCharts.vue'
 
 const ROUTE_TO_TYPE = {
@@ -302,6 +319,8 @@ const ROUTE_TO_TYPE = {
   'income-by-category': 'category_income',
   'expense-by-category': 'category_expense'
 }
+
+const { loading: wsLoading, workspaceMode, workspaces, defaultWorkspaceId } = useWorkspaceScope()
 
 const route = useRoute()
 const reportType = computed(() => {
@@ -330,6 +349,7 @@ const accountOptions = ref([])
 const reportData = ref([])
 const loading = ref(false)
 const defaultCurrency = ref({ code: 'USD' })
+const selectedWorkspaceId = ref(null)
 
 const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 function monthLabel(row) {
@@ -349,6 +369,8 @@ function initDateRange() {
   startDate.value = start.toISOString().split('T')[0]
   endDate.value = end.toISOString().split('T')[0]
 }
+
+initDateRange()
 
 function onStartDateChange(e) {
   const v = e.detail.value
@@ -385,6 +407,9 @@ const reportParams = computed(() => {
   }
   if (reportType.value === 'category_income' || reportType.value === 'category_expense') {
     params.category_level = categoryLevel.value
+  }
+  if (workspaceMode.value === 'private' && selectedWorkspaceId.value != null) {
+    params.workspace_id = selectedWorkspaceId.value
   }
   return params
 })
@@ -442,7 +467,11 @@ async function onRefresh(ev) {
 
 async function loadAccounts() {
   try {
-    const res = await getAccounts({ is_active: true })
+    const filters = { is_active: true }
+    if (workspaceMode.value === 'private' && selectedWorkspaceId.value != null) {
+      filters.workspace_id = selectedWorkspaceId.value
+    }
+    const res = await getAccounts(filters)
     if (res?.success && res?.data) {
       accountOptions.value = res.data
     }
@@ -456,15 +485,32 @@ watch(() => route.path, () => {
   fetchReports()
 })
 
+watch(
+  [wsLoading, workspaceMode, defaultWorkspaceId, selectedWorkspaceId],
+  async (newVals, oldVals) => {
+    if (wsLoading.value) return
+    if (workspaceMode.value === 'private') {
+      if (selectedWorkspaceId.value == null && defaultWorkspaceId.value != null) {
+        selectedWorkspaceId.value = defaultWorkspaceId.value
+        return
+      }
+      if (selectedWorkspaceId.value == null) return
+      if (oldVals && newVals[3] !== oldVals[3]) {
+        selectedAccountIds.value = []
+      }
+    }
+    await loadAccounts()
+    await fetchReports()
+  },
+  { immediate: true }
+)
+
 onMounted(async () => {
-  initDateRange()
   try {
     const r = await getTenantDefaultCurrency()
     const c = r?.data?.data ?? r?.data
     if (c?.code) defaultCurrency.value = c
   } catch (_) {}
-  await loadAccounts()
-  await fetchReports()
 })
 </script>
 

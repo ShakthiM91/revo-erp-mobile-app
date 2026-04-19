@@ -22,6 +22,24 @@
           <ion-segment-button value="expense">Expense</ion-segment-button>
         </ion-segment>
       </ion-toolbar>
+      <ion-toolbar v-if="workspaceMode === 'private'">
+        <ion-item lines="none">
+          <ion-label position="stacked">Workspace</ion-label>
+          <ion-select
+            v-model="selectedWorkspaceId"
+            interface="popover"
+            placeholder="Select workspace"
+          >
+            <ion-select-option
+              v-for="ws in workspaces"
+              :key="ws.id"
+              :value="ws.id"
+            >
+              {{ ws.is_default ? `${ws.name} (default)` : ws.name }}
+            </ion-select-option>
+          </ion-select>
+        </ion-item>
+      </ion-toolbar>
     </ion-header>
     <ion-content>
       <ion-refresher slot="fixed" @ionRefresh="onRefresh">
@@ -48,6 +66,8 @@
       :is-open="formOpen"
       :category="currentCategory"
       :type="activeTab"
+      :workspace-id="workspaceMode === 'private' ? selectedWorkspaceId : undefined"
+      :include-all-workspaces="workspaceMode === 'shared'"
       @close="formOpen = false"
       @success="onFormSuccess"
     />
@@ -55,7 +75,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, watch } from 'vue'
 import {
   IonPage,
   IonHeader,
@@ -72,13 +92,20 @@ import {
   IonRefresherContent,
   IonAccordionGroup,
   IonSpinner,
-  IonNote
+  IonNote,
+  IonItem,
+  IonLabel,
+  IonSelect,
+  IonSelectOption
 } from '@ionic/vue'
 import { addOutline, menuOutline } from 'ionicons/icons'
 import { showToast, showConfirmDialog } from '@/utils/ionicFeedback'
 import { getCategoryTree, deleteCategory, toggleCategoryActive } from '@/api/accounting'
+import { useWorkspaceScope } from '@/composables/useWorkspaceScope'
 import CategoryItem from './components/CategoryItem.vue'
 import CategoryForm from './components/CategoryForm.vue'
+
+const { loading: wsLoading, workspaceMode, workspaces, defaultWorkspaceId } = useWorkspaceScope()
 
 const activeTab = ref('income')
 const loading = ref(false)
@@ -86,6 +113,7 @@ const incomeCategories = ref([])
 const expenseCategories = ref([])
 const formOpen = ref(false)
 const currentCategory = ref(null)
+const selectedWorkspaceId = ref(null)
 
 const displayCategories = computed(() =>
   activeTab.value === 'income' ? incomeCategories.value : expenseCategories.value
@@ -94,9 +122,14 @@ const displayCategories = computed(() =>
 async function load() {
   loading.value = true
   try {
+    const treeOpts =
+      workspaceMode.value === 'shared' ? { includeAllWorkspaces: true } : {}
+    const wsId =
+      workspaceMode.value === 'private' ? selectedWorkspaceId.value : null
+
     const [incomeRes, expenseRes] = await Promise.all([
-      getCategoryTree('income'),
-      getCategoryTree('expense')
+      getCategoryTree('income', wsId, treeOpts),
+      getCategoryTree('expense', wsId, treeOpts)
     ])
     incomeCategories.value = incomeRes?.data ?? (incomeRes?.success ? incomeRes?.data : []) ?? []
     expenseCategories.value = expenseRes?.data ?? (expenseRes?.success ? expenseRes?.data : []) ?? []
@@ -169,7 +202,21 @@ function onFormSuccess() {
   load()
 }
 
-onMounted(() => load())
+watch(
+  [wsLoading, workspaceMode, defaultWorkspaceId, selectedWorkspaceId],
+  () => {
+    if (wsLoading.value) return
+    if (workspaceMode.value === 'private') {
+      if (selectedWorkspaceId.value == null && defaultWorkspaceId.value != null) {
+        selectedWorkspaceId.value = defaultWorkspaceId.value
+        return
+      }
+      if (selectedWorkspaceId.value == null) return
+    }
+    load()
+  },
+  { immediate: true }
+)
 </script>
 
 <style scoped>
