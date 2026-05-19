@@ -43,8 +43,8 @@
 
         <template v-if="difference !== null && difference !== 0">
           <ion-item button detail @click="showCategoryPicker = true">
-            <ion-label position="stacked">Category</ion-label>
-            <ion-note slot="end">{{ categoryText || 'Select' }}</ion-note>
+            <ion-label position="stacked">Category (optional)</ion-label>
+            <ion-note slot="end">{{ categoryText || 'Uses Reconcile if empty' }}</ion-note>
           </ion-item>
 
           <ion-item>
@@ -109,7 +109,7 @@ import {
   IonTextarea
 } from '@ionic/vue'
 import { showToast } from '@/utils/ionicFeedback'
-import { createTransaction, getCategoryTree } from '@/api/accounting'
+import { createTransaction, ensureReconcileCategory, getCategoryTree } from '@/api/accounting'
 
 const props = defineProps({
   visible: { type: Boolean, default: false },
@@ -148,11 +148,7 @@ const categoryText = computed(() => {
   return c ? c.text : ''
 })
 
-const submitDisabled = computed(() => {
-  if (difference.value === null) return true
-  if (difference.value === 0) return false
-  return categoryId.value == null
-})
+const submitDisabled = computed(() => difference.value === null)
 
 function formatCurrency(amount, currency = 'USD') {
   return new Intl.NumberFormat('en-US', {
@@ -181,10 +177,16 @@ function flatten(arr, pre = '') {
   return out
 }
 
+function accountWorkspaceIdNullable() {
+  const wsRaw = props.account?.workspace_id
+  return wsRaw != null && wsRaw !== '' && !Number.isNaN(Number(wsRaw)) ? Number(wsRaw) : null
+}
+
 async function loadCategories(type) {
   if (!type) return
+  const workspaceId = accountWorkspaceIdNullable()
   try {
-    const r = await getCategoryTree(type)
+    const r = await getCategoryTree(type, workspaceId)
     const data = r?.data ?? r?.data?.data ?? []
     const filtered = filterActiveCategories(Array.isArray(data) ? data : [])
     categoryOptions.value = flatten(filtered)
@@ -244,8 +246,8 @@ async function handleSubmit() {
     return
   }
 
-  if (difference.value === null || categoryId.value == null) {
-    showToast(difference.value === null ? 'Enter latest balance' : 'Select a category')
+  if (difference.value === null) {
+    showToast('Enter latest balance')
     return
   }
 
@@ -257,11 +259,23 @@ async function handleSubmit() {
       ? `Reconciliation: ${remark.value.trim()}`
       : 'Balance reconciliation'
 
+    let resolvedCategoryId = categoryId.value
+    if (resolvedCategoryId == null) {
+      const ens = await ensureReconcileCategory({
+        type,
+        workspace_id: accountWorkspaceIdNullable()
+      })
+      resolvedCategoryId = Number(ens?.data?.id)
+      if (!resolvedCategoryId) {
+        throw new Error('Could not resolve reconciliation category')
+      }
+    }
+
     const res = await createTransaction({
       transaction_number: `RECON-${Date.now()}`,
       type,
       account_id: props.account.id,
-      category_id: categoryId.value,
+      category_id: resolvedCategoryId,
       amount,
       currency: props.account.currency || 'USD',
       description,
