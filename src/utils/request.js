@@ -58,15 +58,21 @@ service.interceptors.response.use(
       }
     }
 
+    const isPublicRoute = _router?.currentRoute?.value?.meta?.public === true
+
     if (status === 401) {
-      if (currentPath !== '/login') {
-        useUserStore().resetState()
+      if (!isPublicRoute) {
+        useUserStore()
+          .clearSession()
+          .catch(() => {})
         showToast('Session expired. Please login again.')
         redirectToLogin()
       }
     } else if (isInvalidOrExpiredToken403) {
-      if (currentPath !== '/login') {
-        useUserStore().resetState()
+      if (!isPublicRoute) {
+        useUserStore()
+          .clearSession()
+          .catch(() => {})
         redirectToLogin()
       }
     } else if (status === 403) {

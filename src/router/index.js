@@ -370,7 +370,7 @@ router.beforeEach(async (to, from, next) => {
           await userStore.getInfo()
           next()
         } catch (error) {
-          await userStore.resetState()
+          await userStore.clearSession()
           next(`/login?redirect=${encodeURIComponent(to.path)}`)
         }
       }
