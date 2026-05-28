@@ -32,6 +32,22 @@
               <p>{{ perm.code }}</p>
             </ion-label>
           </ion-item>
+          <template v-for="section in menu.sections || []" :key="section.id">
+            <ion-item-divider color="light">
+              <ion-label>{{ section.name }}</ion-label>
+            </ion-item-divider>
+            <ion-item v-for="perm in section.permissions" :key="perm.id" lines="inset">
+              <ion-checkbox
+                slot="start"
+                :checked="checkedPermissions.includes(perm.id)"
+                @ionChange="togglePermission(perm.id, $event.detail.checked)"
+              />
+              <ion-label>
+                <h3>{{ perm.name }}</h3>
+                <p>{{ perm.code }}</p>
+              </ion-label>
+            </ion-item>
+          </template>
         </ion-item-group>
       </ion-list>
     </ion-content>
