@@ -54,10 +54,13 @@ For devices/simulators, point `VITE_API_BASE_URL` to an URL reachable from the d
 - **Auth:** Login, logout, profile, change password
 - **Dashboard:** Member, asset, and event stats
 - **Finance:** Transactions list, create/edit, summary; accounts and reports (basic)
+- **Workspaces:** List and manage via `/api/members/workspaces` (`src/api/workspace.js`); permissions `member.workspaces.*`
 - **Assets:** List, create/edit, assign, history
 - **Schedule:** Calendar, events list, create/edit event
 - **Members:** List, create/edit, assign role
 - **Me:** Profile, settings, members, logout
+
+See [`docs/workspaces.md`](../../docs/workspaces.md) for workspace architecture.
 
 ## Permission Gating
 
