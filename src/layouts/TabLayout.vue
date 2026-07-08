@@ -24,7 +24,7 @@
       </ion-toolbar>
     </ion-header>
     <ion-tabs>
-      <ion-router-outlet />
+      <ion-router-outlet :swipe-gesture="false" />
       <ion-tab-bar v-if="showTabbar" slot="bottom">
         <ion-tab-button tab="dashboard" href="/dashboard">
           <ion-icon :icon="homeOutline" />
